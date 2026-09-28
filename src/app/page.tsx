@@ -360,11 +360,11 @@ export default function DashboardPage() {
                           <Sliders className="h-5 w-5" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-sm font-bold text-sky-950 dark:text-sky-100">
-                              Unit & Line Data Correction Studio
+                              Unit & Line Data Editor
                             </h3>
-                            <Badge className="bg-sky-600 text-white text-[10px] py-0">Input & Fix</Badge>
+                            <Badge className="bg-sky-600 text-white text-[10px] py-0 shrink-0">Input & Fix</Badge>
                           </div>
                           <p className="text-xs text-sky-700 dark:text-sky-300">
                             Select any Unit and Line to inspect, correct wrong dates/quantities, tune machine manpower and efficiency.
@@ -387,11 +387,11 @@ export default function DashboardPage() {
                           <FileSpreadsheet className="h-5 w-5" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-100">
                               Excel Plan Master Grid
                             </h3>
-                            <Badge className="bg-emerald-600 text-white text-[10px] py-0">31-Day Matrix</Badge>
+                            <Badge className="bg-emerald-600 text-white text-[10px] py-0 shrink-0">31-Day Matrix</Badge>
                           </div>
                           <p className="text-xs text-emerald-700 dark:text-emerald-300">
                             Full spreadsheet layout matching uploaded Excel sign-off sheet.

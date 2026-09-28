@@ -35,7 +35,7 @@ export function ExcelMasterSheet({ initialMonth = "2026-10", onExport }: ExcelMa
   const [dateColumns, setDateColumns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(200);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRows, setTotalRows] = useState(0);
   const [summaryTotals, setSummaryTotals] = useState<any>({});
@@ -809,6 +809,8 @@ export function ExcelMasterSheet({ initialMonth = "2026-10", onExport }: ExcelMa
               <option value={50}>50</option>
               <option value={100}>100</option>
               <option value={200}>200</option>
+              <option value={400}>400</option>
+              <option value={500}>500</option>
             </select>
           </div>
 
