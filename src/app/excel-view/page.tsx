@@ -6,8 +6,8 @@ import { Header } from "@/components/layout/header";
 import { ExcelMasterSheet } from "@/components/dashboard/excel-master-sheet";
 import { SignoffPlanSummary } from "@/components/dashboard/signoff-plan-summary";
 import { UnitLineEditor } from "@/components/dashboard/unit-line-editor";
-import { ExcelImportModal } from "@/components/modals/excel-import-modal";
-import { SettingsModal } from "@/components/modals/settings-modal";
+import { ExcelImportModal } from "@/components/ui/modals/excel-import-modal";
+import { SettingsModal } from "@/components/ui/modals/settings-modal";
 import { FileSpreadsheet, ShieldCheck, Sliders } from "lucide-react";
 
 export default function ExcelViewPage() {
@@ -39,8 +39,8 @@ export default function ExcelViewPage() {
           onOpenSidebar={() => setSidebarOpen(!sidebarOpen)}
           onOpenImportModal={() => setIsImportModalOpen(true)}
           onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
-          onExport={() => {}}
-          onRefresh={() => {}}
+          onExport={() => { }}
+          onRefresh={() => { }}
         />
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
@@ -49,11 +49,10 @@ export default function ExcelViewPage() {
             <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
               <button
                 onClick={() => setSelectedSheet("summary")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
-                  selectedSheet === "summary"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${selectedSheet === "summary"
                     ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
                     : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
-                }`}
+                  }`}
               >
                 <ShieldCheck className="h-4 w-4" />
                 <span>Executive Sign-Off Plan Summary (Summary Sheet)</span>
@@ -61,11 +60,10 @@ export default function ExcelViewPage() {
 
               <button
                 onClick={() => setSelectedSheet("matrix")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
-                  selectedSheet === "matrix"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${selectedSheet === "matrix"
                     ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
                     : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
-                }`}
+                  }`}
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 <span>Full 31-Day Excel Master Grid (Birichina Sheet)</span>
@@ -73,11 +71,10 @@ export default function ExcelViewPage() {
 
               <button
                 onClick={() => setSelectedSheet("editor")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
-                  selectedSheet === "editor"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${selectedSheet === "editor"
                     ? "bg-sky-600 text-white shadow-md shadow-sky-500/20"
                     : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
-                }`}
+                  }`}
               >
                 <Sliders className="h-4 w-4" />
                 <span>Unit & Line Data Correction Studio</span>

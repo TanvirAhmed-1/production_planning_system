@@ -22,6 +22,7 @@ interface HeaderProps {
   onOpenSettingsModal: () => void;
   onExport: (type?: string) => void;
   onRefresh: () => void;
+  onBackToLauncher?: () => void;
   isRefreshing?: boolean;
   alertCount?: number;
   selectedMonth?: string;
@@ -36,6 +37,7 @@ export function Header({
   onOpenSettingsModal,
   onExport,
   onRefresh,
+  onBackToLauncher,
   isRefreshing = false,
   alertCount = 0,
   selectedMonth = "2026-10",
@@ -68,6 +70,19 @@ export function Header({
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-4 sm:px-6 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
       {/* Left: Mobile Menu & Current Page Title */}
       <div className="flex items-center gap-3">
+        {onBackToLauncher && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onBackToLauncher}
+            className="h-8 gap-1.5 px-2.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white border-slate-700 shadow-sm hidden sm:inline-flex"
+            title="Return to Central App Launcher"
+          >
+            <Layers className="h-3.5 w-3.5 text-indigo-400" />
+            <span>App Portal</span>
+          </Button>
+        )}
+
         <button
           type="button"
           onClick={onOpenSidebar}
