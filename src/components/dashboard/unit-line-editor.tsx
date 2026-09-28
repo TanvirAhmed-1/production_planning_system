@@ -351,7 +351,12 @@ export function UnitLineEditor({
         }
       }
 
-      const clockHrs = (lineMetadata.manpower || 25) * (lineMetadata.workingHours || 10.0);
+      let isHoliday = d.dayName === 'Fri';
+      if (dayPlan > 0) {
+        isHoliday = false;
+      }
+
+      const clockHrs = isHoliday ? 0 : (lineMetadata.manpower || 25) * (lineMetadata.workingHours || 10.0);
       let dayEff = clockHrs > 0 ? (daySah / clockHrs) * 100 : 0;
 
       if (manualEfficiencyOverrides[d.dateStr] !== undefined) {
@@ -526,7 +531,7 @@ export function UnitLineEditor({
       const payload = {
         lineId: lineMetadata.id,
         lineName: lineMetadata.name || selectedLine,
-        unitCode: selectedUnit,
+        unitCode: lineMetadata.unitCode,
         month: selectedMonth,
         batchId: selectedBatchId,
         lineSettings: {
@@ -717,8 +722,8 @@ export function UnitLineEditor({
                 options={unitOptions}
                 value={selectedUnit}
                 onChange={(val) => handleUnitChange(val)}
-                allOptionLabel=""
-                allOptionValue=""
+                allOptionLabel="All Units"
+                allOptionValue="ALL"
               />
             </div>
 
@@ -757,8 +762,8 @@ export function UnitLineEditor({
                 options={monthOptions}
                 value={selectedMonth}
                 onChange={(val) => setSelectedMonth(val)}
-                allOptionLabel=""
-                allOptionValue=""
+                allOptionLabel="All Months"
+                allOptionValue="ALL"
               />
             </div>
           </div>

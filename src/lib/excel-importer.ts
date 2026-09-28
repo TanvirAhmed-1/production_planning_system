@@ -317,13 +317,24 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
           }
         }
 
+        let calculatedWorkingHours = 10.0;
+        const manpowerVal = typeof manpowerRaw === 'number' && manpowerRaw > 0 ? manpowerRaw : 25;
+
+        if (lineSummaryData && lineSummaryData.MACHINE && lineSummaryData.MACHINE.daily) {
+          const dailyMachineValues = Object.values(lineSummaryData.MACHINE.daily);
+          const firstValidMachineHr = dailyMachineValues.find(v => typeof v === 'number' && v > 0);
+          if (firstValidMachineHr !== undefined) {
+            calculatedWorkingHours = Number((Number(firstValidMachineHr) / manpowerVal).toFixed(2));
+          }
+        }
+
         lineDefMap.set(ln, {
           id: crypto.randomUUID(),
           name: ln,
           unitId: uId,
           unitCode: uCode,
-          manpower: typeof manpowerRaw === 'number' && manpowerRaw > 0 ? manpowerRaw : 25,
-          workingHours: 10.0,
+          manpower: manpowerVal,
+          workingHours: calculatedWorkingHours,
           status: 'ACTIVE',
           summaryJson: lineSummaryData ? JSON.stringify(lineSummaryData) : null
         });
@@ -345,6 +356,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
             unitId: line.unitId,
             unitCode: line.unitCode,
             manpower: line.manpower,
+            workingHours: line.workingHours,
             summaryJson: line.summaryJson
           }
         });
