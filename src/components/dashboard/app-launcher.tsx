@@ -29,10 +29,10 @@ export function AppLauncher() {
     },
     {
       id: "inventory",
-      name: "2ND EXCEL MODULE",
+      name: "VA & LOSS TRACKER",
       path: "/second-excel",
       icon: FileSpreadsheet,
-      iconColor: "text-emerald-600",
+      iconColor: "text-purple-600",
     },
   ];
 
