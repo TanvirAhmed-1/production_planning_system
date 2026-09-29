@@ -303,7 +303,7 @@ export function ProductionCharts({
                 Unit-wise Output & Efficiency Comparison
               </CardTitle>
               <CardDescription className="text-xs">
-                Performance breakdown across U02, U03, U04, and B2 units
+                Performance breakdown across U02, U03, U04, B2U2, and B2U3 units
               </CardDescription>
             </div>
           </CardHeader>
@@ -362,22 +362,23 @@ export function ProductionCharts({
                   <XAxis dataKey="buyerName" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
+                  <Bar
+                    dataKey="target"
+                    name="Target Pcs"
+                    fill="#c4b5fd"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={30}
+                  />
                   <Bar
                     dataKey="actual"
                     name="Produced Pcs"
                     fill="#8b5cf6"
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={32}
+                    maxBarSize={30}
                     onClick={(entry) => onBuyerClick?.(entry.buyerName)}
                     className="cursor-pointer"
-                  >
-                    {buyerPerformance.slice(0, 7).map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={['#8b5cf6', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'][index % 7]}
-                      />
-                    ))}
-                  </Bar>
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>

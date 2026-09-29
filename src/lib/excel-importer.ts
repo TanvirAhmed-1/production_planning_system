@@ -68,7 +68,13 @@ export function normalizeUnitCode(rawUnit: string, lineName: string): string {
   if (u.includes('U02') || u.includes('B1U2') || ln.includes('U02') || ln.includes('B1U2')) return 'U02';
   if (u.includes('U03') || u.includes('B1U3') || ln.includes('U03') || ln.includes('B1U3')) return 'U03';
   if (u.includes('U04') || u.includes('B1U4') || ln.includes('U04') || ln.includes('B1U4')) return 'U04';
-  if (u.startsWith('B2') || ln.startsWith('B2')) return 'B2';
+  if (u.includes('B2U3') || ln.includes('B2U3')) return 'B2U3';
+  if (u.includes('B2U2') || ln.includes('B2U2')) return 'B2U2';
+  if (u.startsWith('B2') || ln.startsWith('B2')) {
+    // If the line is specifically B2U3-xx or B2U2-xx, it's already caught above.
+    // If it's something else starting with B2, return B2.
+    return 'B2';
+  }
   if (u) return u;
 
   return 'Unknown';
@@ -79,6 +85,8 @@ function getUnitDisplayName(code: string): string {
     case 'U02': return 'Unit 02 (B1U2)';
     case 'U03': return 'Unit 03 (B1U3)';
     case 'U04': return 'Unit 04 (B1U4)';
+    case 'B2U2': return 'B2 Unit-02 (B2U2)';
+    case 'B2U3': return 'B2 Unit-03 (B2U3)';
     case 'B2': return 'Unit B2';
     default: return `Unit ${code}`;
   }

@@ -257,7 +257,8 @@ export function UnitLineEditor({
       { label: "Unit 02 (U02)", value: "U02", unit: "U02" },
       { label: "Unit 03 (U03)", value: "U03", unit: "U03" },
       { label: "Unit 04 (U04)", value: "U04", unit: "U04" },
-      { label: "Unit B2 (B2)", value: "B2", unit: "B2" },
+      { label: "Unit B2U2", value: "B2U2", unit: "B2U2" },
+      { label: "Unit B2U3", value: "B2U3", unit: "B2U3" },
     ];
   }, [unitsList]);
 

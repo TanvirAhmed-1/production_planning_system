@@ -175,7 +175,8 @@ export function LinePerformanceTable({ lines, onLineClick, onExport }: LinePerfo
                 { label: "Unit U02", value: "U02" },
                 { label: "Unit U03", value: "U03" },
                 { label: "Unit U04", value: "U04" },
-                { label: "Unit B2", value: "B2" }
+                { label: "Unit B2U2", value: "B2U2" },
+                { label: "Unit B2U3", value: "B2U3" }
               ]}
               onChange={(val) => {
                 setSelectedUnit(val);
