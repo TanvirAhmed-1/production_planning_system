@@ -192,3 +192,252 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+// ==========================================
+// EXCEL IMPORT & FILE PROCESSING WORKFLOW
+// ==========================================
+
+model FileUpload {
+  id            String       @id @default(cuid())
+  fileName      String
+  originalName  String?
+  fileSize      Int          @default(0)
+  fileFormat    String       // xlsx, xlsb, xls, xlsm, csv
+  fileHash      String?
+  status        String       @default("PENDING") // PENDING, PROCESSING, READY_FOR_PREVIEW, IMPORTING, COMPLETED, FAILED, CANCELLED
+  totalSheets   Int          @default(0)
+  totalRows     Int          @default(0)
+  importedRows  Int          @default(0)
+  skippedRows   Int          @default(0)
+  errorRows     Int          @default(0)
+  uploadedBy    String?      @default("System User")
+  importMode    String       @default("INSERT_UPDATE") // INSERT, UPDATE, INSERT_UPDATE, PREVIEW_ONLY
+  meta          String?      // JSON string for sheet metadata, stats, summary
+  errorMessage  String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  sheets        FileSheet[]
+  rows          ImportRow[]
+  errors        ImportError[]
+  monitoringRecords ProductionMonitoringRecord[]
+  clockHourRecords  LineClockHourRecord[]
+  lossAnalysisRecords LossAnalysisRecord[]
+
+  @@index([fileHash])
+  @@index([status])
+  @@index([createdAt])
+  @@map("file_uploads")
+}
+
+model FileSheet {
+  id             String      @id @default(cuid())
+  fileUploadId   String
+  sheetName      String
+  sheetIndex     Int         @default(0)
+  rowCount       Int         @default(0)
+  colCount       Int         @default(0)
+  headerRowIndex Int         @default(0)
+  headersJson    String?     // JSON array of detected header strings
+  sampleDataJson String?     // JSON array of first 5-10 rows
+  status         String      @default("DETECTED")
+  createdAt      DateTime    @default(now())
+
+  fileUpload     FileUpload  @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  @@index([fileUploadId])
+  @@index([sheetName])
+  @@map("file_sheets")
+}
+
+model ImportTemplate {
+  id               String    @id @default(cuid())
+  name             String    @unique // e.g. "Actual Daily Production", "Sign-Off Capacity Plan", "Loss Time Tracker"
+  description      String?
+  sheetNamePattern String?   // regex or keyword match e.g. "Actual", "Report", "Loss Time"
+  targetModel      String    // "ProductionMonitoringRecord", "LineClockHourRecord", "Order"
+  mappingsJson     String    // JSON array of { sourceCol: string|number, targetField: string, required: boolean, transform: string }
+  isDefault        Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("import_templates")
+}
+
+model ImportRow {
+  id                   String     @id @default(cuid())
+  fileUploadId         String
+  sheetName            String
+  sourceRowIndex       Int
+  rawRowJson           String     // JSON array of raw cell strings/numbers
+  parsedRowJson        String?    // JSON object of mapped fields
+  validationStatus     String     @default("PENDING") // VALID, WARNING, ERROR, PENDING, IMPORTED, SKIPPED
+  validationErrorsJson String?    // JSON array of error messages/warnings
+  isEdited             Boolean    @default(false)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  fileUpload           FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  @@index([fileUploadId])
+  @@index([sheetName])
+  @@index([validationStatus])
+  @@map("import_rows")
+}
+
+model ImportError {
+  id           String     @id @default(cuid())
+  fileUploadId String
+  sheetName    String?
+  rowIndex     Int?
+  colIndex     Int?
+  fieldName    String?
+  errorType    String     // REQUIRED_FIELD, TYPE_MISMATCH, UNKNOWN_LINE, UNKNOWN_BUYER, DUPLICATE, CALC_MISMATCH
+  errorMessage String
+  rawValue     String?
+  isResolved   Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  fileUpload   FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  @@index([fileUploadId])
+  @@index([errorType])
+  @@map("import_errors")
+}
+
+// ==========================================
+// PRODUCTION MONITORING & ANALYTICS RECORDS
+// ==========================================
+
+model ProductionMonitoringRecord {
+  id                 String      @id @default(cuid())
+  code               String?     // e.g. "46266B1U2-01" or unique identifier
+  date               DateTime
+  dateString         String      // YYYY-MM-DD
+  month              String      // e.g. "2026-09"
+  unitLine           String      // e.g. "B1U2-01"
+  unitCode           String      // e.g. "B1U2", "B1U3", "B2U2", "S1U1"
+  cluster            String?     // e.g. "B1", "B2", "Styrax"
+  buyer              String?
+  style              String?
+  oc                 String?
+  categoryType       String?     // e.g. "P1-BASIC PANTY", "Bra", "Activewear"
+  productType        String?     // Panty, Bra, Short, etc.
+  fobPrice           Float?      @default(0.0)
+  vaPrice            Float?      @default(0.0)
+  smv                Float?      @default(0.0)
+  targetQty          Int?        @default(0) // Plan Pcs
+  actualQty          Int?        @default(0) // Actual Pcs
+  varianceQty        Int?        @default(0) // Actual - Plan
+  mo                 Float?      @default(0.0) // Manpower equivalent
+  clockHours         Float?      @default(0.0)
+  targetSah          Float?      @default(0.0) // Plan SAH
+  actualSah          Float?      @default(0.0) // Actual SAH
+  varianceSah        Float?      @default(0.0)
+  efficiency         Float?      @default(0.0) // Actual Efficiency %
+  plannedEfficiency  Float?      @default(0.0)
+  achievementRate    Float?      @default(0.0) // (actualQty / targetQty) * 100
+  fobValue           Float?      @default(0.0) // Total FOB
+  vaValue            Float?      @default(0.0) // Total VA
+  remarks            String?
+  fileUploadId       String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  fileUpload         FileUpload? @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([dateString])
+  @@index([month])
+  @@index([unitLine])
+  @@index([unitCode])
+  @@index([cluster])
+  @@index([buyer])
+  @@index([style])
+  @@index([oc])
+  @@index([fileUploadId])
+  @@map("production_monitoring_records")
+}
+
+model LineClockHourRecord {
+  id           String      @id @default(cuid())
+  date         DateTime
+  dateString   String      // YYYY-MM-DD
+  month        String      // e.g. "2026-09"
+  line         String      // e.g. "B1U2-01"
+  unit         String      // e.g. "B1U2"
+  cluster      String      // e.g. "B1", "B2", "Styrax"
+  payrollMo    Int         @default(0)
+  absentLeave  Int         @default(0)
+  mlv          Int         @default(0)
+  present      Int         @default(0)
+  lineTransfer Int         @default(0)
+  moForClkHrs  Int         @default(0)
+  clockHour    Float       @default(0.0)
+  absentRate   Float?      @default(0.0)
+  fileUploadId String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  fileUpload   FileUpload? @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([dateString])
+  @@index([month])
+  @@index([line])
+  @@index([unit])
+  @@index([cluster])
+  @@index([fileUploadId])
+  @@map("line_clock_hour_records")
+}
+
+model LossAnalysisRecord {
+  id              String      @id @default(cuid())
+  date            DateTime
+  dateString      String      // YYYY-MM-DD
+  month           String      // e.g. "2026-09"
+  cluster         String      // "B1", "B2", "Styrax"
+  unit            String?     // "B1U2", "B1U3", "B1U4", "B2U2", etc.
+  department      String      // "Production", "Marketing", "SCM", "HR", "Cutting", "Sewing Technical", etc.
+  deptCode        String?     // "Prod", "Mkt", "SCM", "HR", "CU", "S.TC", etc.
+  lostSah         Float       @default(0.0)
+  lostHours       Float?      @default(0.0)
+  sharePercentage Float?      @default(0.0)
+  reason          String?
+  fileUploadId    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  fileUpload      FileUpload? @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([dateString])
+  @@index([month])
+  @@index([cluster])
+  @@index([unit])
+  @@index([department])
+  @@index([fileUploadId])
+  @@map("loss_analysis_records")
+}
+
+model AuditLog {
+  id           String    @id @default(cuid())
+  action       String    // CREATE, UPDATE, DELETE, IMPORT, REVALIDATE, OVERRIDE
+  entityType   String    // ProductionMonitoringRecord, Order, FileUpload, etc.
+  entityId     String?
+  oldValueJson String?
+  newValueJson String?
+  userId       String?
+  userEmail    String?
+  ipAddress    String?
+  details      String?
+  createdAt    DateTime  @default(now())
+
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

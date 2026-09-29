@@ -29,7 +29,7 @@ export function AppLauncher() {
     },
     {
       id: "inventory",
-      name: "VA & LOSS TRACKER",
+      name: "PRODUCTION MONITORING & VA TRACKER",
       path: "/second-excel",
       icon: FileSpreadsheet,
       iconColor: "text-purple-600",
