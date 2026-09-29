@@ -14,7 +14,6 @@ import {
   Clock,
   Users,
   Gauge,
-  Sparkles,
   Layers,
   Factory,
   Search,

@@ -20,6 +20,7 @@ import { ExcelMasterSheet } from "@/components/dashboard/excel-master-sheet";
 import { SignoffPlanSummary } from "@/components/dashboard/signoff-plan-summary";
 import { UnitLineEditor } from "@/components/dashboard/unit-line-editor";
 import { AboutUs } from "@/components/dashboard/about-us";
+import { RunLinesReport } from "@/components/dashboard/run-lines-report";
 import { ExcelImportModal } from "@/components/modals/excel-import-modal";
 import { SettingsModal } from "@/components/modals/settings-modal";
 import { DeleteConfirmationModal } from "@/components/shared/delete-confirmation-modal";
@@ -948,6 +949,13 @@ export default function DashboardPage() {
                       )}
                     </CardContent>
                   </Card>
+                </div>
+              )}
+
+              {/* TAB: RUN LINES */}
+              {activeTab === "run-lines" && (
+                <div className="space-y-6">
+                  <RunLinesReport />
                 </div>
               )}
 

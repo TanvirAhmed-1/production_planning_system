@@ -61,6 +61,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount
       items: [
         { id: "unit-editor", label: "Unit & Line Data Editor", icon: Sliders, badge: "Input / Fix", badgeVariant: "emerald" },
         { id: "signoff-summary", label: "Sign-off Plan Summary", icon: ShieldCheck },
+        { id: "run-lines", label: "Run Lines", icon: FileSpreadsheet },
         { id: "excel-master", label: "Excel Plan Matrix", icon: FileSpreadsheet },
         { id: "daily-report", label: "Daily Production", icon: Calendar },
         { id: "target-vs-actual", label: "Target vs Actual", icon: BarChart3 },
