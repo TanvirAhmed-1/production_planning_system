@@ -131,6 +131,10 @@ export function GlobalFilterBar({
                 setFilters(prev => ({
                   ...prev,
                   batchId: bId,
+                  unitCode: "ALL",
+                  lineName: "ALL",
+                  buyerName: "ALL",
+                  season: "ALL",
                   month: selectedBatch?.month || prev.month || "ALL"
                 }));
               }}

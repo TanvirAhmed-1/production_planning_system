@@ -20,10 +20,14 @@ model User {
   @@map("users")
 }
 
+
+
+
+
 model Unit {
   id            String           @id @default(cuid())
-  code          String           @unique // e.g. "U02", "U03", "U04", "B2"
-  name          String           // e.g. "Unit 02", "Unit 03"
+  code          String           @unique // e.g. "U02", "U03", "U04", "B2U2", "B2U3"
+  name          String           @unique // e.g. "Unit 02 (B1U2)", "Unit 03 (B1U3)"
   totalLines    Int              @default(0)
   totalManpower Int              @default(0)
   createdAt     DateTime         @default(now())
@@ -38,7 +42,7 @@ model Unit {
 
 model ProductionLine {
   id           String            @id @default(cuid())
-  name         String            @unique // e.g. "U02-01", "B2U2-05"
+  name         String            // e.g. "U02-01", "B2U2-05"
   unitId       String
   unitCode     String
   manpower     Int               @default(25)
@@ -52,6 +56,8 @@ model ProductionLine {
   orders       Order[]
   dailyRecords ProductionDaily[]
 
+  @@unique([unitId, name])
+  @@index([name])
   @@index([unitId])
   @@index([unitCode])
   @@map("production_lines")

@@ -304,7 +304,12 @@ export async function POST(req: NextRequest) {
     // 1. Resolve Line & Unit
     let line = lineId ? await prisma.productionLine.findUnique({ where: { id: lineId } }) : null;
     if (!line && lineName) {
-      line = await prisma.productionLine.findUnique({ where: { name: lineName } });
+      line = await prisma.productionLine.findFirst({
+        where: {
+          name: lineName,
+          ...(unitCode ? { unitCode } : {})
+        }
+      });
     }
 
     if (!line) {

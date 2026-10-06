@@ -402,7 +402,7 @@ export async function getDashboardData(filters: FilterParams = {}) {
 }
 
 export async function getLineDetails(lineName: string) {
-  const line = await prisma.productionLine.findUnique({
+  const line = await prisma.productionLine.findFirst({
     where: { name: lineName },
     include: {
       unit: true,
@@ -593,33 +593,96 @@ export async function getLineDetails(lineName: string) {
   };
 }
 
-export async function getFilterOptions() {
-  const [units, lines, buyers, seasons, months, batches] = await Promise.all([
-    prisma.unit.findMany({ select: { code: true, name: true } }),
-    prisma.productionLine.findMany({ select: { name: true, unitCode: true }, orderBy: { name: 'asc' } }),
-    prisma.buyer.findMany({ select: { name: true }, orderBy: { name: 'asc' } }),
-    prisma.order.findMany({
-      where: { season: { not: null } },
-      distinct: ['season'],
-      select: { season: true }
-    }),
-    prisma.productionDaily.findMany({
-      distinct: ['month'],
-      select: { month: true },
-      orderBy: { month: 'desc' }
-    }),
+export async function getFilterOptions(batchId?: string, unitCode?: string) {
+  const effectiveBatchId = batchId && batchId !== 'ALL' ? batchId : undefined;
+  const effectiveUnitCode = unitCode && unitCode !== 'ALL' ? unitCode : undefined;
+
+  const [batches, rawUnits, rawLines, rawBuyers, rawSeasons, rawMonths] = await Promise.all([
+    // Batches list for file filter
     prisma.importBatch.findMany({
       select: { id: true, fileName: true, month: true, totalRows: true, createdAt: true },
       orderBy: { createdAt: 'desc' }
+    }),
+    // Units list: if batchId is provided, get units active in that batch
+    effectiveBatchId
+      ? prisma.order.findMany({
+          where: { importBatchId: effectiveBatchId },
+          distinct: ['unitCode'],
+          select: { unitCode: true }
+        }).then(async (batchUnits) => {
+          const codes = batchUnits.map(u => u.unitCode).filter(Boolean);
+          return prisma.unit.findMany({
+            where: { code: { in: codes } },
+            select: { code: true, name: true },
+            orderBy: { code: 'asc' }
+          });
+        })
+      : prisma.unit.findMany({
+          where: { totalLines: { gt: 0 } },
+          select: { code: true, name: true },
+          orderBy: { code: 'asc' }
+        }),
+    // Lines list: if batchId or unitCode provided, get lines active in that batch / unit
+    effectiveBatchId
+      ? prisma.order.findMany({
+          where: {
+            importBatchId: effectiveBatchId,
+            ...(effectiveUnitCode ? { unitCode: effectiveUnitCode } : {})
+          },
+          distinct: ['lineName', 'unitCode'],
+          select: { lineName: true, unitCode: true }
+        }).then(batchLines =>
+          batchLines
+            .filter(l => l.lineName)
+            .map(l => ({ name: l.lineName!, unitCode: l.unitCode }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        )
+      : prisma.productionLine.findMany({
+          where: effectiveUnitCode ? { unitCode: effectiveUnitCode } : undefined,
+          select: { name: true, unitCode: true },
+          orderBy: { name: 'asc' }
+        }),
+    // Buyers list: filtered by batch if provided
+    effectiveBatchId
+      ? prisma.order.findMany({
+          where: {
+            importBatchId: effectiveBatchId,
+            ...(effectiveUnitCode ? { unitCode: effectiveUnitCode } : {})
+          },
+          distinct: ['buyerName'],
+          select: { buyerName: true }
+        }).then(bb =>
+          bb
+            .filter(b => b.buyerName)
+            .map(b => ({ name: b.buyerName }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        )
+      : prisma.buyer.findMany({ select: { name: true }, orderBy: { name: 'asc' } }),
+    // Seasons list: filtered by batch if provided
+    prisma.order.findMany({
+      where: {
+        ...(effectiveBatchId ? { importBatchId: effectiveBatchId } : {}),
+        ...(effectiveUnitCode ? { unitCode: effectiveUnitCode } : {}),
+        season: { not: null }
+      },
+      distinct: ['season'],
+      select: { season: true }
+    }),
+    // Months list: filtered by batch if provided
+    prisma.productionDaily.findMany({
+      where: effectiveBatchId ? { importBatchId: effectiveBatchId } : undefined,
+      distinct: ['month'],
+      select: { month: true },
+      orderBy: { month: 'desc' }
     })
   ]);
 
   return {
-    units: units.map(u => ({ label: `${u.code} (${u.name})`, value: u.code })),
-    lines: lines.map(l => ({ label: l.name, value: l.name, unit: l.unitCode })),
-    buyers: buyers.map(b => ({ label: b.name, value: b.name })),
-    seasons: seasons.map(s => ({ label: s.season!, value: s.season! })),
-    months: months.map(m => ({ label: m.month, value: m.month })),
+    units: rawUnits.map(u => ({ label: `${u.code} (${u.name})`, value: u.code })),
+    lines: rawLines.map(l => ({ label: l.name, value: l.name, unit: l.unitCode })),
+    buyers: rawBuyers.map(b => ({ label: b.name, value: b.name })),
+    seasons: rawSeasons.map(s => ({ label: s.season!, value: s.season! })),
+    months: rawMonths.map(m => ({ label: m.month, value: m.month })),
     batches: batches.map(b => ({
       label: `${b.fileName} (${b.month})`,
       value: b.id,

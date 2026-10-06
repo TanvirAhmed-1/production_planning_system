@@ -37,7 +37,6 @@ import {
   Sliders,
   Trash2,
   Eye,
-  CheckCircle2,
 } from "lucide-react";
 
 const initialFilters: FilterState = {
@@ -104,10 +103,13 @@ export default function DashboardPage() {
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
 
-  // Fetch Filter Dropdown Options
-  const fetchFilterOptions = useCallback(async () => {
+  // Fetch Filter Dropdown Options (Dynamic by File / Batch & Unit)
+  const fetchFilterOptions = useCallback(async (batchId?: string, unitCode?: string) => {
     try {
-      const res = await fetch("/api/analytics/filters");
+      const params = new URLSearchParams();
+      if (batchId && batchId !== "ALL") params.append("batchId", batchId);
+      if (unitCode && unitCode !== "ALL") params.append("unitCode", unitCode);
+      const res = await fetch(`/api/analytics/filters?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setFilterOptions(data);
@@ -194,14 +196,18 @@ export default function DashboardPage() {
     setFilters(prev => ({
       ...prev,
       batchId,
+      unitCode: "ALL",
+      lineName: "ALL",
+      buyerName: "ALL",
+      season: "ALL",
       month: month || prev.month || "ALL"
     }));
     setActiveTab("overview");
   };
 
   useEffect(() => {
-    fetchFilterOptions();
-  }, [fetchFilterOptions]);
+    fetchFilterOptions(filters.batchId, filters.unitCode);
+  }, [filters.batchId, filters.unitCode, fetchFilterOptions]);
 
   // Read URL query params on mount (e.g. ?tab=unit-editor&lineName=U02-01&unitCode=U02)
   useEffect(() => {
@@ -1043,9 +1049,24 @@ export default function DashboardPage() {
       <ExcelImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        onImportSuccess={() => {
-          fetchFilterOptions();
-          fetchDashboardData(filters, selectedMonth);
+        onImportSuccess={(result) => {
+          const newBatchId = result?.batchId;
+          const newMonth = result?.verification?.month;
+          if (newBatchId) {
+            setFilters(prev => ({
+              ...prev,
+              batchId: newBatchId,
+              unitCode: "ALL",
+              lineName: "ALL",
+              buyerName: "ALL",
+              season: "ALL",
+              month: newMonth || prev.month || "ALL"
+            }));
+            fetchFilterOptions(newBatchId);
+          } else {
+            fetchFilterOptions(filters.batchId, filters.unitCode);
+            fetchDashboardData(filters, selectedMonth);
+          }
           fetchImportHistory();
         }}
       />

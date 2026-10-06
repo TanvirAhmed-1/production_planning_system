@@ -28,7 +28,7 @@ import {
 interface ExcelImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportSuccess?: () => void;
+  onImportSuccess?: (result?: any) => void;
 }
 
 export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImportModalProps) {
@@ -89,7 +89,7 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
       }
 
       setImportResult(data);
-      onImportSuccess?.();
+      onImportSuccess?.(data);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error occurred while uploading Excel file');
     } finally {
@@ -221,7 +221,11 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
                 <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400 block font-medium">Total Planned Qty</span>
                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">
-                    {v?.dbPlannedQty ? (v.dbPlannedQty / 1_000_000).toFixed(2) + "M pcs" : importResult.importedRows}
+                    {v?.dbPlannedQty
+                      ? (v.dbPlannedQty / 1_000_000).toFixed(2) + "M pcs"
+                      : importResult.totalPlanQty
+                      ? (importResult.totalPlanQty / 1_000_000).toFixed(2) + "M pcs"
+                      : importResult.importedRows?.toLocaleString()}
                   </span>
                   <span className="text-[10px] text-emerald-600 font-semibold block">0 Variance vs Excel</span>
                 </div>
@@ -231,13 +235,13 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
                   <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 font-mono">
                     {v?.dbLinesCount || importResult.linesCount} Lines
                   </span>
-                  <span className="text-[10px] text-slate-500 block">B2:39, U03:28, U02:23, U04:23</span>
+                  <span className="text-[10px] text-slate-500 block">5 Units Active</span>
                 </div>
 
                 <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400 block font-medium">Order Items</span>
                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">
-                    {v?.dbOrdersCount?.toLocaleString() || importResult.importedRows}
+                    {(v?.dbOrdersCount || importResult.importedRows)?.toLocaleString()}
                   </span>
                   <span className="text-[10px] text-slate-500 block">{importResult.buyersCount} Buyers</span>
                 </div>
@@ -245,9 +249,9 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
                 <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400 block font-medium">Daily Records</span>
                   <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 font-mono">
-                    {v?.dbDailyRecordsCount?.toLocaleString() || importResult.dailyCount}
+                    {(v?.dbDailyRecordsCount || importResult.dailyCount)?.toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-slate-500 block">{v?.datesCount || 31} Active Dates</span>
+                  <span className="text-[10px] text-slate-500 block">{v?.datesCount || 26} Active Dates</span>
                 </div>
               </div>
 
