@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
-import { Filter, X, RotateCcw, Search, Calendar, Check, SlidersHorizontal } from "lucide-react";
+import { RotateCcw, CornerDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/shared/searchable-select";
+import { cn } from "@/lib/utils";
 
 export interface FilterState {
   batchId?: string;
@@ -22,6 +22,20 @@ export interface FilterState {
   search?: string;
 }
 
+export interface ActivePlanInfo {
+  id: string;
+  fileName: string;
+  month?: string;
+  batchType?: string;
+  linkedActuals?: {
+    id: string;
+    fileName: string;
+    importedRows?: number;
+    createdAt?: string;
+    summary?: any;
+  }[];
+}
+
 interface GlobalFilterBarProps {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
@@ -32,8 +46,11 @@ interface GlobalFilterBarProps {
     buyers: { label: string; value: string }[];
     seasons: { label: string; value: string }[];
     months?: { label: string; value: string }[];
-    batches?: { label: string; value: string; month?: string; fileName?: string }[];
+    batches?: { label: string; value: string; month?: string; fileName?: string; batchType?: string }[];
+    planBatches?: { label: string; value: string; month?: string; fileName?: string; actualCount?: number }[];
+    actualBatches?: { label: string; value: string; month?: string; fileName?: string }[];
   };
+  activePlan?: ActivePlanInfo;
   onApply?: () => void;
   onReset?: () => void;
   onOpenUploadModal?: () => void;
@@ -43,12 +60,11 @@ export function GlobalFilterBar({
   filters,
   setFilters,
   filterOptions,
+  activePlan,
   onApply,
   onReset,
   onOpenUploadModal
 }: GlobalFilterBarProps) {
-  const [isExpanded, setIsExpanded] = React.useState(false);
-
   const filteredUnits = React.useMemo(() => {
     if (!filters.cluster || filters.cluster === "ALL") {
       return filterOptions.units;
@@ -87,11 +103,22 @@ export function GlobalFilterBar({
     setFilters(prev => ({ ...prev, [key]: defaultVal }));
   };
 
+  const availablePlans = React.useMemo(() => {
+    if (filterOptions.planBatches && filterOptions.planBatches.length > 0) {
+      return filterOptions.planBatches;
+    }
+    if (filterOptions.batches && filterOptions.batches.length > 0) {
+      return filterOptions.batches.filter(b => b.batchType !== "ACTUAL");
+    }
+    return [];
+  }, [filterOptions.planBatches, filterOptions.batches]);
+
   const handleResetAll = () => {
+    const defaultPlan = availablePlans.length > 0 ? availablePlans[0] : null;
     setFilters({
-      batchId: "ALL",
+      batchId: defaultPlan ? defaultPlan.value : "ALL",
       cluster: "ALL",
-      month: "ALL",
+      month: defaultPlan?.month || "ALL",
       unitCode: "ALL",
       lineName: "ALL",
       buyerName: "ALL",
@@ -105,44 +132,54 @@ export function GlobalFilterBar({
     onReset?.();
   };
 
-  return (
-    <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-900/90">
-      {/* Top Main Filter Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
-            <Filter className="h-4 w-4" />
-          </div>
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-              Global Filter System
-              {activeFiltersCount > 0 && (
-                <span className="flex h-5 items-center justify-center rounded-full bg-sky-600 px-1.5 text-[10px] font-bold text-white">
-                  {activeFiltersCount} active
-                </span>
-              )}
-            </span>
-          </div>
-        </div>
+  // Resolve current active production plan details
+  const currentPlan = React.useMemo(() => {
+    if (activePlan?.fileName) {
+      return {
+        fileName: activePlan.fileName,
+        month: activePlan.month,
+        linkedActuals: activePlan.linkedActuals || []
+      };
+    }
+    const found = availablePlans.find(b => b.value === filters.batchId);
+    if (found) {
+      return {
+        fileName: found.fileName || found.label,
+        month: found.month,
+        linkedActuals: []
+      };
+    }
+    return null;
+  }, [activePlan, availablePlans, filters.batchId]);
 
-        {/* Quick Filter Inputs */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Uploaded Excel File / Batch Selector */}
-          {filterOptions.batches && filterOptions.batches.length > 0 && (
+  return (
+    <div className="rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 shadow-2xs transition-all dark:border-slate-800 dark:bg-slate-900/90">
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+          {/* GLOBAL FILTERS */}
+          <Badge
+            variant="outline"
+            className="bg-sky-50 text-sky-700 border-sky-300 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800 text-[10px] font-bold px-1.5 py-0.5 uppercase shrink-0"
+          >
+            Global
+          </Badge>
+
+          {/* Production Plan Selector */}
+          {availablePlans.length > 0 && (
             <SearchableSelect
-              label="Plan/File:"
-              placeholder="All Plans & Trackers"
-              searchPlaceholder="Search plan file..."
-              allOptionLabel="All Plans & Trackers"
+              label="Plan:"
+              placeholder="All Production Plans"
+              searchPlaceholder="Search production plan..."
+              allOptionLabel="All Production Plans"
               allOptionValue="ALL"
               value={filters.batchId || "ALL"}
-              options={filterOptions.batches.map(b => ({
+              options={availablePlans.map(b => ({
                 label: b.label,
                 value: b.value,
                 badge: b.month
               }))}
               onChange={(bId) => {
-                const selectedBatch = filterOptions.batches?.find(b => b.value === bId);
+                const selectedPlan = availablePlans.find(b => b.value === bId);
                 setFilters(prev => ({
                   ...prev,
                   batchId: bId,
@@ -150,10 +187,12 @@ export function GlobalFilterBar({
                   lineName: "ALL",
                   buyerName: "ALL",
                   season: "ALL",
-                  month: selectedBatch?.month || prev.month || "ALL"
+                  month: selectedPlan?.month || prev.month || "ALL"
                 }));
               }}
-              dropdownWidth="w-72"
+              className="w-56 sm:w-64 max-w-[280px]"
+              triggerClassName="h-7 text-xs py-0"
+              dropdownWidth="w-80 sm:w-96"
             />
           )}
 
@@ -174,26 +213,21 @@ export function GlobalFilterBar({
             onChange={(val) => {
               setFilters(prev => ({ ...prev, cluster: val, unitCode: "ALL", lineName: "ALL" }));
             }}
-            dropdownWidth="w-48"
+            className="w-32 sm:w-36"
+            triggerClassName="h-7 text-xs py-0"
+            dropdownWidth="w-40"
           />
 
-          {/* Month Selector */}
-          {filterOptions.months && filterOptions.months.length > 0 && (
-            <SearchableSelect
-              label="Month:"
-              placeholder="All Months"
-              searchPlaceholder="Search month..."
-              allOptionLabel="All Months"
-              allOptionValue="ALL"
-              value={filters.month || "ALL"}
-              options={filterOptions.months.map(m => ({
-                label: m.label,
-                value: m.value
-              }))}
-              onChange={(val) => setFilters(prev => ({ ...prev, month: val }))}
-              dropdownWidth="w-56"
-            />
-          )}
+          {/* Vertical Separator */}
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0 hidden sm:block" />
+
+          {/* INDIVIDUAL FILTERS */}
+          <Badge
+            variant="outline"
+            className="bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800 text-[10px] font-bold px-1.5 py-0.5 uppercase shrink-0"
+          >
+            Individual
+          </Badge>
 
           {/* Unit selector */}
           <SearchableSelect
@@ -210,14 +244,16 @@ export function GlobalFilterBar({
             onChange={(val) => {
               setFilters(prev => ({ ...prev, unitCode: val, lineName: "ALL" }));
             }}
-            dropdownWidth="w-56"
+            className="w-32 sm:w-36"
+            triggerClassName="h-7 text-xs py-0"
+            dropdownWidth="w-48"
           />
 
-          {/* Line selector (Searchable with Unit Badges) */}
+          {/* Line selector */}
           <SearchableSelect
             label="Line:"
             placeholder="All Lines"
-            searchPlaceholder="Search line (e.g. U02-01, B2-15)..."
+            searchPlaceholder="Search line..."
             allOptionLabel="All Lines"
             allOptionValue="ALL"
             value={filters.lineName || "ALL"}
@@ -227,230 +263,63 @@ export function GlobalFilterBar({
               unit: l.unit
             }))}
             onChange={(val) => setFilters(prev => ({ ...prev, lineName: val }))}
-            dropdownWidth="w-64"
+            className="w-32 sm:w-36"
+            triggerClassName="h-7 text-xs py-0"
+            dropdownWidth="w-56"
           />
-
-          {/* Buyer selector */}
-          <SearchableSelect
-            label="Buyer:"
-            placeholder="All Buyers"
-            searchPlaceholder="Search buyer..."
-            allOptionLabel="All Buyers"
-            allOptionValue="ALL"
-            value={filters.buyerName || "ALL"}
-            options={filterOptions.buyers.map(b => ({
-              label: b.label,
-              value: b.value
-            }))}
-            onChange={(val) => setFilters(prev => ({ ...prev, buyerName: val }))}
-            dropdownWidth="w-64"
-          />
-
-          {/* Quick Date Range / Preset Indicator */}
-          {(filters.startDate || filters.endDate) && (
-            <Badge variant="secondary" className="gap-1 text-xs bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-semibold h-8 px-2.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>{filters.startDate || "Start"} → {filters.endDate || "End"}</span>
-              <X
-                className="h-3.5 w-3.5 cursor-pointer hover:text-rose-500 ml-1"
-                onClick={() => setFilters(prev => ({ ...prev, startDate: "", endDate: "" }))}
-              />
-            </Badge>
-          )}
-
-          {/* Expand more filters */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="h-8 gap-1.5 text-xs text-slate-700 dark:text-slate-300"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>{isExpanded ? "Fewer Filters" : "More Filters / Date Range"}</span>
-          </Button>
-
-          {/* Reset button */}
-          {activeFiltersCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleResetAll}
-              className="h-8 gap-1 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40"
-            >
-              <RotateCcw className="h-3 w-3" />
-              <span>Reset</span>
-            </Button>
-          )}
         </div>
+
+        {/* Reset button at far right */}
+        {activeFiltersCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResetAll}
+            className="h-6 text-[11px] text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 gap-1 px-1.5 font-medium shrink-0 ml-auto"
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>Reset</span>
+          </Button>
+        )}
       </div>
 
-      {/* Expanded Advanced Filters */}
-      {isExpanded && (
-        <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800/80 animate-in fade-in-50 duration-200">
-          {/* Quick Date Presets Row */}
-          <div className="flex flex-wrap items-center gap-1.5 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-850">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mr-1 flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5 text-purple-600" />
-              <span>Date Presets:</span>
+      {/* Active Production Plan & Linked Floor Actual Tracker Strip (Single Row) */}
+      {currentPlan && (
+        <div className="mt-1.5 border-t border-slate-100 dark:border-slate-800/80 pt-1.5 flex flex-wrap items-center gap-2 text-xs">
+          {/* Production Plan Name */}
+          <div className="flex items-center gap-1.5 min-w-0 max-w-full sm:max-w-[48%]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
+              Plan:
             </span>
-
-            {[
-              { label: "All Month", start: "", end: "" },
-              { label: "Week 1 (Oct 1-7)", start: "2026-10-01", end: "2026-10-07" },
-              { label: "Week 2 (Oct 8-14)", start: "2026-10-08", end: "2026-10-14" },
-              { label: "Week 3 (Oct 15-21)", start: "2026-10-15", end: "2026-10-21" },
-              { label: "Week 4 (Oct 22-31)", start: "2026-10-22", end: "2026-10-31" },
-              { label: "1st Half (1-15)", start: "2026-10-01", end: "2026-10-15" },
-              { label: "2nd Half (16-31)", start: "2026-10-16", end: "2026-10-31" },
-            ].map((preset) => {
-              const isActive = filters.startDate === preset.start && filters.endDate === preset.end;
-              return (
-                <button
-                  key={preset.label}
-                  onClick={() => setFilters(prev => ({ ...prev, startDate: preset.start, endDate: preset.end }))}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                    isActive
-                      ? "bg-purple-600 text-white shadow-xs"
-                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
+            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate min-w-0" title={currentPlan.fileName}>
+              {currentPlan.fileName}
+            </span>
+            {currentPlan.month && (
+              <Badge variant="outline" className="text-[9px] py-0 px-1 font-semibold text-sky-700 border-sky-300 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300 shrink-0">
+                {currentPlan.month}
+              </Badge>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Style Ref Search */}
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                Style Ref / Article:
-              </label>
-              <Input
-                placeholder="e.g. 4934P, 559068"
-                value={filters.styleRef}
-                onChange={(e) => setFilters(prev => ({ ...prev, styleRef: e.target.value }))}
-                className="h-8 text-xs bg-white dark:bg-slate-900"
-              />
+          {/* Linked Actual Production Tracker (on the same row) */}
+          {currentPlan.linkedActuals && currentPlan.linkedActuals.length > 0 && (
+            <div className="flex items-center gap-1.5 min-w-0 max-w-full sm:max-w-[50%] text-[11px] text-slate-600 dark:text-slate-400">
+              <span className="text-slate-300 dark:text-slate-700 hidden sm:inline shrink-0">|</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 shrink-0">
+                Actual:
+              </span>
+              <span className="font-medium text-emerald-700 dark:text-emerald-300 truncate min-w-0" title={currentPlan.linkedActuals[0].fileName}>
+                {currentPlan.linkedActuals[0].fileName}
+              </span>
+              {currentPlan.linkedActuals[0].importedRows && (
+                <span className="text-[10px] text-slate-400 shrink-0">
+                  ({currentPlan.linkedActuals[0].importedRows.toLocaleString()} records)
+                </span>
+              )}
+              <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium text-emerald-700 border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shrink-0">
+                Floor Synced
+              </Badge>
             </div>
-
-            {/* Season Selector */}
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                Season:
-              </label>
-              <SearchableSelect
-                placeholder="All Seasons"
-                searchPlaceholder="Search season..."
-                allOptionLabel="All Seasons"
-                allOptionValue="ALL"
-                value={filters.season || "ALL"}
-                options={filterOptions.seasons.map(s => ({
-                  label: s.label,
-                  value: s.value
-                }))}
-                onChange={(val) => setFilters(prev => ({ ...prev, season: val }))}
-                className="w-full"
-                triggerClassName="w-full justify-between bg-white dark:bg-slate-900 h-8"
-                dropdownWidth="w-full min-w-[200px]"
-              />
-            </div>
-
-            {/* Date Range Start */}
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                From Date (YYYY-MM-DD):
-              </label>
-              <Input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                className="h-8 text-xs bg-white dark:bg-slate-900"
-              />
-            </div>
-
-            {/* Date Range End */}
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                To Date (YYYY-MM-DD):
-              </label>
-              <Input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                className="h-8 text-xs bg-white dark:bg-slate-900"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Active Filter Tags */}
-      {activeFiltersCount > 0 && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-800/60">
-          <span className="text-[11px] text-slate-400">Active:</span>
-
-          {filters.batchId && filters.batchId !== "ALL" && (
-            <Badge variant="secondary" className="gap-1 text-[11px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-medium">
-              File: {filterOptions.batches?.find(b => b.value === filters.batchId)?.fileName || filters.batchId}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("batchId")} />
-            </Badge>
-          )}
-
-          {filters.month && filters.month !== "ALL" && (
-            <Badge variant="secondary" className="gap-1 text-[11px] bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">
-              Month: {filters.month}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("month")} />
-            </Badge>
-          )}
-
-          {filters.unitCode && filters.unitCode !== "ALL" && (
-            <Badge variant="secondary" className="gap-1 text-[11px] bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">
-              Unit: {filters.unitCode}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("unitCode")} />
-            </Badge>
-          )}
-
-          {filters.lineName && filters.lineName !== "ALL" && (
-            <Badge variant="secondary" className="gap-1 text-[11px] bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">
-              Line: {filters.lineName}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("lineName")} />
-            </Badge>
-          )}
-
-          {filters.buyerName && filters.buyerName !== "ALL" && (
-            <Badge variant="secondary" className="gap-1 text-[11px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-              Buyer: {filters.buyerName}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("buyerName")} />
-            </Badge>
-          )}
-
-          {filters.season && filters.season !== "ALL" && (
-            <Badge variant="secondary" className="gap-1 text-[11px]">
-              Season: {filters.season}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("season")} />
-            </Badge>
-          )}
-
-          {filters.styleRef && (
-            <Badge variant="secondary" className="gap-1 text-[11px]">
-              Style: {filters.styleRef}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("styleRef", "")} />
-            </Badge>
-          )}
-
-          {filters.startDate && (
-            <Badge variant="secondary" className="gap-1 text-[11px]">
-              From: {filters.startDate}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("startDate", "")} />
-            </Badge>
-          )}
-
-          {filters.endDate && (
-            <Badge variant="secondary" className="gap-1 text-[11px]">
-              To: {filters.endDate}
-              <X className="h-3 w-3 cursor-pointer hover:text-rose-500" onClick={() => clearFilter("endDate", "")} />
-            </Badge>
           )}
         </div>
       )}

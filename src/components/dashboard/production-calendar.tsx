@@ -47,7 +47,7 @@ export function ProductionCalendar({ days, onSelectDate }: ProductionCalendarPro
       </CardHeader>
 
       <CardContent className="pt-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {days.map((day) => {
             const hasActual = day.actual > 0;
             const isHigh = hasActual && day.achievementRate >= 85;

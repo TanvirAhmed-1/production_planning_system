@@ -7,7 +7,6 @@ import {
   Download,
   Search,
   RefreshCw,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -35,7 +34,7 @@ export function ExcelMasterSheet({ initialMonth = "2026-10", onExport }: ExcelMa
   const [dateColumns, setDateColumns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(200);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRows, setTotalRows] = useState(0);
   const [summaryTotals, setSummaryTotals] = useState<any>({});
@@ -200,14 +199,6 @@ export function ExcelMasterSheet({ initialMonth = "2026-10", onExport }: ExcelMa
               </span>
             </div>
 
-            <Link
-              href="/?tab=unit-editor"
-              className="inline-flex items-center h-8 gap-1.5 px-3 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-900 shadow-sm transition-all"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-slate-950" />
-              <span>Edit / Fix Data</span>
-            </Link>
-
             <Button
               variant="secondary"
               size="sm"
@@ -341,7 +332,7 @@ export function ExcelMasterSheet({ initialMonth = "2026-10", onExport }: ExcelMa
 
       {/* Spreadsheet Matrix Grid */}
       <CardContent className="p-0">
-        <div className="relative overflow-x-auto overflow-y-auto max-h-[70vh] border-b border-slate-200 dark:border-slate-800 select-text custom-scrollbar">
+        <div className="relative overflow-x-auto overflow-y-auto max-h-[85vh] min-h-[600px] border-b border-slate-200 dark:border-slate-800 select-text custom-scrollbar">
           <table className="w-full text-left text-xs border-collapse font-sans">
             {/* Top Multi-level Header */}
             <thead className="sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold shadow-xs">

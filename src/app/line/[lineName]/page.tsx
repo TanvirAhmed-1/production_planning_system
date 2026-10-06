@@ -292,9 +292,9 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
             <CardDescription>{error || `Line "${lineName}" does not exist in the active plan.`}</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center gap-3">
-            <Button variant="outline" onClick={() => router.push("/")} className="gap-2">
+            <Button variant="outline" onClick={() => router.push("/?tab=line-performance")} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
+              Back to Line Performance
             </Button>
           </CardContent>
         </Card>
@@ -331,16 +331,16 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/?tab=line-performance")}
               className="h-8 gap-1.5 text-xs font-semibold border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 shadow-xs"
             >
               <ArrowLeft className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-              <span>Back to Dashboard</span>
+              <span>Back to Line Performance</span>
             </Button>
 
             <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-              <Link href="/" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
-                Production Plan
+              <Link href="/?tab=line-performance" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+                Line Performance
               </Link>
               <ChevronRight className="h-3 w-3 text-slate-400" />
               <span className="font-semibold text-sky-600 dark:text-sky-400">Line Detail: {line.name}</span>

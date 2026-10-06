@@ -94,6 +94,21 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
     []
   );
 
+  const datePresetOptions = useMemo(
+    () => [
+      { label: "Week 1 (Oct 01-07)", value: "WEEK_1", badge: "01-07" },
+      { label: "Week 2 (Oct 08-14)", value: "WEEK_2", badge: "08-14" },
+      { label: "Week 3 (Oct 15-21)", value: "WEEK_3", badge: "15-21" },
+      { label: "Week 4 (Oct 22-31)", value: "WEEK_4", badge: "22-31" },
+      { label: "1st Half (Oct 01-15)", value: "HALF_1", badge: "01-15" },
+      { label: "2nd Half (Oct 16-31)", value: "HALF_2", badge: "16-31" },
+      ...(activePreset === "CUSTOM"
+        ? [{ label: "Custom Date Range", value: "CUSTOM", badge: "Custom" }]
+        : []),
+    ],
+    [activePreset]
+  );
+
   // Apply Quick Date Presets
   const applyDatePreset = (presetKey: string) => {
     setActivePreset(presetKey);
@@ -275,34 +290,27 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
 
         {/* Date Filter Toolbar */}
         <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800 space-y-3">
-          {/* Preset Buttons */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
-              <Filter className="h-3 w-3 text-sky-600" />
-              <span>Date Filter:</span>
-            </span>
+          {/* Preset Selector */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 shrink-0">
+                <Filter className="h-3 w-3 text-sky-600" />
+                <span>Date Filter:</span>
+              </span>
 
-            {[
-              { id: "ALL", label: "Full Month (1-31 Oct)" },
-              { id: "WEEK_1", label: "Week 1 (Oct 01-07)" },
-              { id: "WEEK_2", label: "Week 2 (Oct 08-14)" },
-              { id: "WEEK_3", label: "Week 3 (Oct 15-21)" },
-              { id: "WEEK_4", label: "Week 4 (Oct 22-31)" },
-              { id: "HALF_1", label: "1st Half (Oct 01-15)" },
-              { id: "HALF_2", label: "2nd Half (Oct 16-31)" },
-            ].map((p) => (
-              <button
-                key={p.id}
-                onClick={() => applyDatePreset(p.id)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                  activePreset === p.id && !startDate && !endDate && selectedSingleDate === "ALL"
-                    ? "bg-sky-600 text-white shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+              <SearchableSelect
+                className="w-56 sm:w-64"
+                triggerClassName="w-full h-8 text-xs font-semibold bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 shadow-xs"
+                dropdownWidth="w-64"
+                placeholder="Full Month (1-31 Oct)"
+                searchPlaceholder="Search date filter..."
+                options={datePresetOptions}
+                value={activePreset}
+                onChange={(val) => applyDatePreset(val)}
+                allOptionLabel="Full Month (1-31 Oct)"
+                allOptionValue="ALL"
+              />
+            </div>
 
             {hasActiveFilters && (
               <Button

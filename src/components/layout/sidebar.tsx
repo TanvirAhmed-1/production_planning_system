@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Calendar,
@@ -14,14 +15,11 @@ import {
   Settings,
   Factory,
   BarChart3,
-  ListOrdered,
   ChevronRight,
-  ShieldCheck,
   ChevronDown,
-  Sliders,
-  Edit3,
   X,
-  User
+  User,
+  Radio
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +32,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount = 0 }: SidebarProps) {
+  const router = useRouter();
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({
     production: true,
     performance: true,
@@ -59,8 +58,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount
       section: "production",
       label: "Production",
       items: [
-        { id: "unit-editor", label: "Unit & Line Data Editor", icon: Sliders, badge: "Input / Fix", badgeVariant: "emerald" },
-        { id: "signoff-summary", label: "Sign-off Plan Summary", icon: ShieldCheck },
+        { id: "actual-production", label: "Actual Production Details", icon: Radio, href: "/actual-production" },
         { id: "run-lines", label: "Run Lines", icon: FileSpreadsheet },
         { id: "excel-master", label: "Excel Plan Matrix", icon: FileSpreadsheet },
         { id: "daily-report", label: "Daily Production", icon: Calendar },
@@ -83,7 +81,6 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount
       section: "orders",
       label: "Orders & Styles",
       items: [
-        { id: "all-orders", label: "All Orders & Styles", icon: ListOrdered },
         { id: "production-gap", label: "Production Gap Analysis", icon: TrendingUp },
       ]
     },
@@ -98,14 +95,12 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount
           badge: alertCount > 0 ? alertCount : null,
           badgeVariant: "destructive"
         },
-        { id: "management-summary", label: "Management Summary", icon: ShieldCheck },
       ]
     },
     {
       section: "data",
       label: "Data Management",
       items: [
-        { id: "unit-editor", label: "Unit & Line Data Fixer", icon: Sliders },
         { id: "excel-import", label: "Excel Import / Sync", icon: UploadCloud },
         { id: "import-history", label: "Import History", icon: FileSpreadsheet },
       ]
@@ -210,6 +205,9 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount
                       <button
                         key={item.id}
                         onClick={() => {
+                          if (item.href) {
+                            router.push(item.href);
+                          }
                           setActiveTab(item.id);
                           setIsOpen(false);
                         }}
@@ -247,23 +245,6 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount
 
         {/* Footer info & Settings */}
         <div className="border-t border-slate-800 p-3 space-y-1">
-          <button
-            onClick={() => {
-              setActiveTab("settings");
-              setIsOpen(false);
-            }}
-            className={cn(
-              "flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              activeTab === "settings"
-                ? "bg-slate-800 text-white font-semibold"
-                : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <Settings className="h-4 w-4 text-slate-400" />
-              <span>Settings & Thresholds</span>
-            </div>
-          </button>
 
           <button
             onClick={() => {
@@ -286,16 +267,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, alertCount
             </span>
           </button>
           
-          <div className="mt-2.5 rounded-lg bg-slate-950/60 p-2.5 text-[11px] text-slate-400 border border-slate-850">
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Month Plan:</span>
-              <span className="font-semibold text-sky-400">October 2026</span>
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-              <span>Status:</span>
-              <span className="text-emerald-400 font-medium">Signed Off (113 Lines)</span>
-            </div>
-          </div>
+
         </div>
       </aside>
     </>

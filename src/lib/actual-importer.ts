@@ -478,13 +478,14 @@ export async function parseAndImportActualExcel(
       let unit = unitByCode.get(unitCode);
       if (!unit) {
         const uDisplayName = CANONICAL_UNITS[unitCode] || `Unit ${unitCode}`;
-        unit = await prisma.unit.create({
-          data: {
-            id: crypto.randomUUID(),
+        unit = await prisma.unit.upsert({
+          where: { code: unitCode },
+          create: {
             code: unitCode,
             name: uDisplayName,
-            cluster
-          }
+            cluster: cluster || 'B1'
+          },
+          update: {}
         });
         unitByCode.set(unitCode, unit);
       }
@@ -493,7 +494,9 @@ export async function parseAndImportActualExcel(
       let line = lineByUnitAndName.get(`${unitCode}::${lineName}`);
       if (!line && lineByName.has(lineName)) {
         const match = lineByName.get(lineName);
-        if (match.unitCode === unitCode || (unitCode.startsWith('U') && match.unitCode.startsWith('U'))) line = match;
+        if (match && (match.unitCode === unitCode || (unitCode.startsWith('U') && match.unitCode.startsWith('U')))) {
+          line = match;
+        }
       }
       if (!line) {
         const aliases = normalizeLineAlias(lineName, unitCode);

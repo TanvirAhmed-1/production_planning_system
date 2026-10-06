@@ -357,10 +357,49 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
     }
 
     if (unitsToCreate.length > 0) {
-      await prisma.unit.createMany({ data: unitsToCreate });
+      for (const u of unitsToCreate) {
+        try {
+          await prisma.unit.upsert({
+            where: { code: u.code },
+            create: {
+              id: u.id,
+              code: u.code,
+              name: u.name,
+              cluster: u.cluster || 'B1'
+            },
+            update: {
+              name: u.name,
+              cluster: u.cluster || 'B1'
+            }
+          });
+        } catch {
+          await prisma.$executeRawUnsafe(
+            'INSERT INTO units (id, code, name, cluster, "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, NOW(), NOW()) ON CONFLICT (code) DO UPDATE SET name = $3, cluster = $4',
+            u.id,
+            u.code,
+            u.name,
+            u.cluster || 'B1'
+          );
+        }
+      }
     }
     for (const item of unitsToUpdate) {
-      await prisma.unit.update({ where: { id: item.id }, data: item.data });
+      try {
+        await prisma.unit.update({
+          where: { id: item.id },
+          data: {
+            name: item.data.name,
+            cluster: item.data.cluster || 'B1'
+          }
+        });
+      } catch {
+        await prisma.$executeRawUnsafe(
+          'UPDATE units SET name = $1, cluster = $2 WHERE id = $3',
+          item.data.name,
+          item.data.cluster || 'B1',
+          item.id
+        );
+      }
     }
 
     // ===== 6. CREATE BATCH RECORD =====

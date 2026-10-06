@@ -67,6 +67,60 @@ export function buildWhereClause(filters: FilterParams, isLineSummary: boolean =
 }
 
 export async function getDashboardData(filters: FilterParams = {}) {
+  let effectiveBatchId = filters.batchId && filters.batchId !== 'ALL' ? filters.batchId : undefined;
+  let activePlanInfo: any = null;
+
+  if (effectiveBatchId) {
+    try {
+      const batch = await prisma.importBatch.findUnique({
+        where: { id: effectiveBatchId },
+        include: {
+          actualBatches: {
+            select: { id: true, fileName: true, importedRows: true, createdAt: true, summary: true }
+          },
+          parentPlan: {
+            select: { id: true, fileName: true, month: true }
+          }
+        }
+      });
+
+      if (batch) {
+        if (batch.batchType === 'ACTUAL' && batch.planBatchId) {
+          effectiveBatchId = batch.planBatchId;
+          const parent = await prisma.importBatch.findUnique({
+            where: { id: batch.planBatchId },
+            include: {
+              actualBatches: {
+                select: { id: true, fileName: true, importedRows: true, createdAt: true, summary: true }
+              }
+            }
+          });
+          if (parent) {
+            activePlanInfo = {
+              id: parent.id,
+              fileName: parent.fileName,
+              month: parent.month,
+              batchType: parent.batchType,
+              linkedActuals: parent.actualBatches || []
+            };
+          }
+        } else {
+          activePlanInfo = {
+            id: batch.id,
+            fileName: batch.fileName,
+            month: batch.month,
+            batchType: batch.batchType,
+            linkedActuals: batch.actualBatches || []
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to resolve activePlanInfo:', e);
+    }
+  }
+
+  const effectiveFilters = effectiveBatchId ? { ...filters, batchId: effectiveBatchId } : filters;
+
   const hasSpecificOrderFilters = !!(
     (filters.buyerName && filters.buyerName !== 'ALL') ||
     filters.styleRef ||
@@ -77,18 +131,18 @@ export async function getDashboardData(filters: FilterParams = {}) {
   // When filtering by specific buyer/style/season, aggregate order-level records (orderId != null)
   // When viewing factory/unit/line overall, aggregate line-level summaries (orderId == null) for accurate Machine Hours & Planned SAH
   const lineSummaryWhere = {
-    ...buildWhereClause(filters, true),
+    ...buildWhereClause(effectiveFilters, true),
     orderId: null
   };
 
   const orderDailyWhere = {
-    ...buildWhereClause(filters, false),
+    ...buildWhereClause(effectiveFilters, false),
     orderId: { not: null }
   };
 
   // 1. Order Table Aggregates (Orders count, Order Qty, Plan Qty)
   const orderTableWhere: any = {};
-  if (filters.batchId && filters.batchId !== 'ALL') orderTableWhere.importBatchId = filters.batchId;
+  if (effectiveBatchId) orderTableWhere.importBatchId = effectiveBatchId;
   if (filters.unitCode && filters.unitCode !== 'ALL') orderTableWhere.unitCode = filters.unitCode;
   if (filters.lineName && filters.lineName !== 'ALL') orderTableWhere.lineName = filters.lineName;
   if (filters.buyerName && filters.buyerName !== 'ALL') orderTableWhere.buyerName = filters.buyerName;
@@ -404,7 +458,8 @@ export async function getDashboardData(filters: FilterParams = {}) {
       lowPerformingLines: lowPerformingLines.slice(0, 10),
       linesWithLargeGaps,
       lowThreshold
-    }
+    },
+    activePlan: activePlanInfo
   };
 }
 
@@ -683,7 +738,18 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
   const [batches, rawUnits, rawLines, rawBuyers, rawSeasons, rawMonths] = await Promise.all([
     // Batches list for file filter
     prisma.importBatch.findMany({
-      select: { id: true, fileName: true, month: true, totalRows: true, batchType: true, planBatchId: true, createdAt: true },
+      select: {
+        id: true,
+        fileName: true,
+        month: true,
+        totalRows: true,
+        batchType: true,
+        planBatchId: true,
+        createdAt: true,
+        actualBatches: {
+          select: { id: true, fileName: true, importedRows: true }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     }),
     // Units list: if batchId is provided, get units active in that batch
@@ -783,12 +849,16 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
       fileName: b.fileName,
       batchType: b.batchType
     })),
-    planBatches: planBatches.map(b => ({
-      label: `${b.fileName} (${b.month})`,
-      value: b.id,
-      month: b.month,
-      fileName: b.fileName
-    })),
+    planBatches: planBatches.map(b => {
+      const actCount = (b as any).actualBatches?.length || 0;
+      return {
+        label: `${b.fileName}${actCount > 0 ? ` [${actCount} Actual Linked]` : ''}`,
+        value: b.id,
+        month: b.month,
+        fileName: b.fileName,
+        actualCount: actCount
+      };
+    }),
     actualBatches: actualBatches.map(b => ({
       label: `${b.fileName} (${b.month})`,
       value: b.id,

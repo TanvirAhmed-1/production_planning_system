@@ -127,25 +127,13 @@ export function SignoffPlanSummary({
       <Card className="shadow-md border-emerald-200/70 dark:border-emerald-900/60 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-teal-50/50 dark:from-emerald-950/30 dark:via-slate-900 dark:to-teal-950/30">
         <CardHeader className="pb-3 border-b border-emerald-100 dark:border-emerald-900/40">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge className="bg-emerald-600 text-white font-bold hover:bg-emerald-700 flex items-center gap-1">
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  Excel Master Summary Sheet
-                </Badge>
-                <Badge variant="outline" className="border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-xs">
-                  Sign-off Plan: 28-Sep & 21-Oct
-                </Badge>
-                <Badge variant="secondary" className="text-xs font-semibold">
-                  Open Working Days: {data.openDays} Days
-                </Badge>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 shrink-0">
+                <FileSpreadsheet className="h-4 w-4" />
               </div>
-              <CardTitle className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-                {data.title}
+              <CardTitle className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                {data.title || `Month of ${month || "2026-10"} Sign off Plan Summary`}
               </CardTitle>
-              <CardDescription className="text-xs text-slate-600 dark:text-slate-400">
-                Executive factory sign-off breakdown across Unit 02, Unit 03, Unit 04, B1 Subtotal, Unit B2, and Birichina Grand Total.
-              </CardDescription>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">

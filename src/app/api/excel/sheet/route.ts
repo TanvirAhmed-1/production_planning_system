@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const season = searchParams.get('season');
     const search = searchParams.get('search')?.trim();
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '200', 10);
 
     // Build filter
     const where: any = {};

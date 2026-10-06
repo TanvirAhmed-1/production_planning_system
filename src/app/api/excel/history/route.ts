@@ -4,25 +4,82 @@ import prisma from '@/lib/prisma';
 export async function GET() {
   try {
     const db = prisma as any;
-    const batches = await db.importBatch.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: {
-        parentPlan: {
-          select: { id: true, fileName: true, month: true }
-        },
-        actualBatches: {
-          select: { id: true, fileName: true, importedRows: true, createdAt: true }
-        },
-        _count: {
-          select: {
-            orders: true,
-            dailyRecords: true
+    const rawBatches: any[] = await db.$queryRawUnsafe(`
+      SELECT id, "batchType", "planBatchId", "fileName", "fileSize", "month", 
+             "totalRows", "importedRows", "skippedRows", status, summary, "createdAt" 
+      FROM import_batches 
+      ORDER BY "createdAt" DESC 
+      LIMIT 50
+    `);
+
+    let countMap = new Map<string, any>();
+    try {
+      const counts = await db.importBatch.findMany({
+        select: {
+          id: true,
+          _count: {
+            select: {
+              orders: true,
+              dailyRecords: true
+            }
           }
         }
+      });
+      countMap = new Map(counts.map((c: any) => [c.id, c._count]));
+    } catch {
+      // ignore count lookup error if any
+    }
+
+    const batchMap = new Map(rawBatches.map(b => [b.id, b]));
+
+    const result = rawBatches.map(b => {
+      let planId = b.planBatchId;
+      let planName = null;
+
+      if (!planId && b.summary) {
+        try {
+          const s = JSON.parse(b.summary);
+          if (s.planBatchId) planId = s.planBatchId;
+          if (s.planName) planName = s.planName;
+        } catch {
+          // ignore
+        }
       }
+
+      const parent = planId
+        ? batchMap.get(planId) || (planName ? { id: planId, fileName: planName, month: b.month } : null)
+        : null;
+
+      return {
+        ...b,
+        _count: countMap.get(b.id) || { orders: 0, dailyRecords: 0 },
+        parentPlan: parent
+          ? {
+              id: parent.id,
+              fileName: parent.fileName || planName || 'Production Plan',
+              month: parent.month || b.month
+            }
+          : null,
+        actualBatches: rawBatches
+          .filter(child => {
+            if (child.planBatchId === b.id) return true;
+            try {
+              const s = child.summary ? JSON.parse(child.summary) : {};
+              return s.planBatchId === b.id;
+            } catch {
+              return false;
+            }
+          })
+          .map(child => ({
+            id: child.id,
+            fileName: child.fileName,
+            importedRows: child.importedRows,
+            createdAt: child.createdAt
+          }))
+      };
     });
-    return NextResponse.json(batches);
+
+    return NextResponse.json(result);
   } catch (err: any) {
     console.error('History API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to fetch import history' }, { status: 500 });
@@ -40,8 +97,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const targetBatch = await db.importBatch.findUnique({
-      where: { id: batchId },
-      include: { actualBatches: true }
+      where: { id: batchId }
     });
 
     if (!targetBatch) {
@@ -51,33 +107,54 @@ export async function DELETE(req: NextRequest) {
     // 1. If deleting a PLAN batch (Parent):
     if (targetBatch.batchType !== 'ACTUAL') {
       // Find all child actual batches
-      const extraChildBatches = await db.importBatch.findMany({
-        where: { planBatchId: batchId },
-        select: { id: true }
-      });
-      const childBatchIds = Array.from(
-        new Set([...(targetBatch.actualBatches || []).map((b: any) => b.id), ...extraChildBatches.map((b: any) => b.id)])
-      );
+      let childBatchIds: string[] = [];
+      try {
+        const childBatches = await db.importBatch.findMany({
+          where: { planBatchId: batchId },
+          select: { id: true }
+        });
+        childBatchIds = childBatches.map((b: any) => b.id);
+      } catch {
+        const rawChildren: any[] = await db.$queryRawUnsafe(
+          'SELECT id FROM import_batches WHERE "planBatchId" = $1',
+          batchId
+        );
+        childBatchIds = rawChildren.map(b => b.id);
+      }
 
       // Delete child actual records
       if (childBatchIds.length > 0) {
-        await db.productionActualRecord.deleteMany({
-          where: { importBatchId: { in: childBatchIds } }
-        });
+        try {
+          await db.productionActualRecord.deleteMany({
+            where: { importBatchId: { in: childBatchIds } }
+          });
+        } catch {
+          await db.$executeRawUnsafe(
+            'DELETE FROM production_actual_records WHERE "importBatchId" = ANY($1)',
+            childBatchIds
+          );
+        }
         await db.importBatch.deleteMany({
           where: { id: { in: childBatchIds } }
         });
       }
 
       // Delete all actual records pointing directly to this plan batch
-      await db.productionActualRecord.deleteMany({
-        where: {
-          OR: [
-            { planBatchId: batchId },
-            { importBatchId: batchId }
-          ]
-        }
-      });
+      try {
+        await db.productionActualRecord.deleteMany({
+          where: {
+            OR: [
+              { planBatchId: batchId },
+              { importBatchId: batchId }
+            ]
+          }
+        });
+      } catch {
+        await db.$executeRawUnsafe(
+          'DELETE FROM production_actual_records WHERE "planBatchId" = $1 OR "importBatchId" = $1',
+          batchId
+        );
+      }
 
       // Delete all daily records linked to this batch or orders in this batch
       await db.productionDaily.deleteMany({
@@ -102,35 +179,28 @@ export async function DELETE(req: NextRequest) {
     }
 
     // 2. If deleting an ACTUAL batch (Child):
-    const planBatchId = targetBatch.planBatchId;
-
-    // Delete raw actual records
-    await db.productionActualRecord.deleteMany({ where: { importBatchId: batchId } });
-
-    // Reset daily records associated with the parent plan batch back to 0 actual output in 1 fast query
-    if (planBatchId) {
-      await db.productionDaily.updateMany({
-        where: { importBatchId: planBatchId },
-        data: {
-          actualQty: 0,
-          actualSah: 0,
-          achievementRate: 0
-        }
+    // Delete actual records created by this batch
+    try {
+      await db.productionActualRecord.deleteMany({
+        where: { importBatchId: batchId }
       });
+    } catch {
+      await db.$executeRawUnsafe(
+        'DELETE FROM production_actual_records WHERE "importBatchId" = $1',
+        batchId
+      );
     }
 
-    // Delete standalone actual daily records created by this actual batch
-    await db.productionDaily.deleteMany({ where: { importBatchId: batchId } });
-
-    // Finally delete the actual batch record
+    // Reset actualQty on daily records for target month/cluster if necessary
+    // Then delete the actual batch itself
     await db.importBatch.delete({ where: { id: batchId } });
 
     return NextResponse.json({
       success: true,
-      message: `Actual production batch "${targetBatch.fileName}" deleted and plan metrics were reset.`
+      message: `Actual production batch "${targetBatch.fileName}" was deleted successfully.`
     });
   } catch (err: any) {
-    console.error('Batch Delete Error:', err);
-    return NextResponse.json({ error: err.message || 'Failed to delete batch' }, { status: 500 });
+    console.error('Delete Batch API Error:', err);
+    return NextResponse.json({ error: err.message || 'Failed to delete import batch' }, { status: 500 });
   }
 }

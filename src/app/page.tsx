@@ -69,6 +69,7 @@ export default function DashboardPage() {
 
   // Filter State
   const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [initialPlanResolved, setInitialPlanResolved] = useState<boolean>(false);
 
   // Filter Dropdown Options
   const [filterOptions, setFilterOptions] = useState<{
@@ -79,7 +80,7 @@ export default function DashboardPage() {
     seasons: { label: string; value: string }[];
     months: { label: string; value: string }[];
     batches: { label: string; value: string; month?: string; fileName?: string; batchType?: string }[];
-    planBatches?: { label: string; value: string; month?: string; fileName?: string }[];
+    planBatches?: { label: string; value: string; month?: string; fileName?: string; actualCount?: number }[];
     actualBatches?: { label: string; value: string; month?: string; fileName?: string }[];
   }>({
     clusters: [
@@ -102,6 +103,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [allLinePerformance, setAllLinePerformance] = useState<any[]>([]);
 
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
@@ -133,6 +135,27 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setFilterOptions(data);
+
+        // Auto-select the last uploaded production plan by default on initial load
+        setInitialPlanResolved(resolved => {
+          if (!resolved) {
+            const latestPlan = data.planBatches?.[0] || data.batches?.find((b: any) => b.batchType !== "ACTUAL");
+            if (latestPlan) {
+              setFilters(prev => {
+                if (prev.batchId === "ALL" || !prev.batchId) {
+                  return {
+                    ...prev,
+                    batchId: latestPlan.value,
+                    month: latestPlan.month || prev.month || "ALL"
+                  };
+                }
+                return prev;
+              });
+            }
+            return true;
+          }
+          return resolved;
+        });
       }
     } catch (err) {
       console.error("Failed to load filter options", err);
@@ -163,6 +186,16 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setDashboardData(data);
+        if (
+          (!currentFilters.unitCode || currentFilters.unitCode === "ALL") &&
+          (!currentFilters.lineName || currentFilters.lineName === "ALL")
+        ) {
+          if (data.linePerformance && data.linePerformance.length > 0) {
+            setAllLinePerformance(data.linePerformance);
+          }
+        } else if (allLinePerformance.length === 0 && data.linePerformance) {
+          setAllLinePerformance(data.linePerformance);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch dashboard data", err);
@@ -267,6 +300,10 @@ export default function DashboardPage() {
       const lineParam = searchParams.get("lineName");
       const monthParam = searchParams.get("month");
 
+      if (tabParam === "actual-production") {
+        router.push("/actual-production");
+        return;
+      }
       if (tabParam) {
         setActiveTab(tabParam);
       }
@@ -280,6 +317,19 @@ export default function DashboardPage() {
       }
     }
   }, []);
+
+  // Keep URL query param in sync with activeTab
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (activeTab === "overview") {
+        url.searchParams.delete("tab");
+      } else {
+        url.searchParams.set("tab", activeTab);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     fetchDashboardData(filters, selectedMonth);
@@ -387,6 +437,7 @@ export default function DashboardPage() {
           filters={filters}
           setFilters={setFilters}
           filterOptions={filterOptions}
+          activePlan={dashboardData?.activePlan}
           onApply={() => fetchDashboardData(filters, selectedMonth)}
           onReset={() => {
             setFilters(initialFilters);
@@ -408,62 +459,9 @@ export default function DashboardPage() {
               {/* TAB: OVERVIEW */}
               {activeTab === "overview" && (
                 <div className="space-y-6">
-                  {/* Quick Excel Master Grid & Data Editor Banners */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-sky-200 bg-gradient-to-r from-sky-50 via-indigo-50/60 to-white p-3.5 shadow-xs dark:border-sky-900/60 dark:from-sky-950/30 dark:to-slate-900">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-600 text-white shadow-xs">
-                          <Sliders className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-sky-950 dark:text-sky-100">
-                              Unit & Line Data Correction Studio
-                            </h3>
-                            <Badge className="bg-sky-600 text-white text-[10px] py-0">Input & Fix</Badge>
-                          </div>
-                          <p className="text-xs text-sky-700 dark:text-sky-300">
-                            Select any Unit and Line to inspect, correct wrong dates/quantities, tune machine manpower and efficiency.
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setActiveTab("unit-editor")}
-                        className="gap-1.5 text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white shrink-0 shadow-xs"
-                      >
-                        <Sliders className="h-3.5 w-3.5" />
-                        <span>Open Data Fixer</span>
-                      </Button>
-                    </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-teal-50/60 to-white p-3.5 shadow-xs dark:border-emerald-900/60 dark:from-emerald-950/30 dark:to-slate-900">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
-                          <FileSpreadsheet className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-100">
-                              Excel Plan Master Grid
-                            </h3>
-                            <Badge className="bg-emerald-600 text-white text-[10px] py-0">31-Day Matrix</Badge>
-                          </div>
-                          <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                            Full spreadsheet layout matching uploaded Excel sign-off sheet.
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setActiveTab("excel-master")}
-                        className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-xs"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>Open Excel Grid</span>
-                      </Button>
-                    </div>
-                  </div>
+
+
 
                   {/* Top 10 KPI Cards */}
                   <KpiCards data={dashboardData.kpis} onCardClick={handleKPIClick} />
@@ -627,7 +625,7 @@ export default function DashboardPage() {
 
                   {/* Line Performance Detailed Table */}
                   <LinePerformanceTable
-                    lines={dashboardData.linePerformance}
+                    lines={allLinePerformance.length > 0 ? allLinePerformance : (dashboardData.linePerformance || [])}
                     onLineClick={handleLineClick}
                     onExport={() => handleExport("line")}
                   />
@@ -741,13 +739,16 @@ export default function DashboardPage() {
               {activeTab === "line-performance" && (
                 <div className="space-y-6">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-xl font-bold text-slate-900">Line-wise Performance Master</h2>
-                    <p className="text-sm text-slate-500">
-                      Monitor all 113 production lines across U02, U03, U04, and B2 units
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <Layers className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                      Line-wise Production Performance Master
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Monitor all production lines across all manufacturing units with floor actual synchronization and deep drill-down analytics
                     </p>
                   </div>
                   <LinePerformanceTable
-                    lines={dashboardData.linePerformance}
+                    lines={allLinePerformance.length > 0 ? allLinePerformance : (dashboardData.linePerformance || [])}
                     onLineClick={handleLineClick}
                     onExport={() => handleExport("line")}
                   />
