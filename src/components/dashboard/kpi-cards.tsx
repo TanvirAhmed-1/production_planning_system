@@ -64,7 +64,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: `${data.totalOrders.toLocaleString()} active orders`,
       icon: ShoppingBag,
       color: "from-blue-500 to-sky-600",
-      iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: "Confirmed Orders",
       trendPositive: true
     },
@@ -76,7 +76,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: "Month Sign-off Plan",
       icon: CalendarCheck,
       color: "from-indigo-500 to-purple-600",
-      iconBg: "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: "October 2026",
       trendPositive: true
     },
@@ -88,7 +88,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: `${formatNumber(data.totalClockHours || 820082)} Machine Hrs`,
       icon: Clock,
       color: "from-fuchsia-500 to-pink-600",
-      iconBg: "bg-fuchsia-50 text-fuchsia-600 dark:bg-fuchsia-950/60 dark:text-fuchsia-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: "Std Allowed Hours",
       trendPositive: true
     },
@@ -100,7 +100,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: "Factory target benchmark: 80%",
       icon: TrendingUp,
       color: "from-amber-500 to-orange-600",
-      iconBg: "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: data.averageEfficiency >= 80 ? "On Target" : "Plan Baseline",
       trendPositive: data.averageEfficiency >= 70
     },
@@ -112,7 +112,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: "Top performing line",
       icon: Award,
       color: "from-teal-500 to-emerald-600",
-      iconBg: "bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: "Peak Performance",
       trendPositive: true
     },
@@ -124,7 +124,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: "Bottleneck supervision needed",
       icon: AlertOctagon,
       color: "from-rose-500 to-red-600",
-      iconBg: "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: "Bottleneck Alert",
       trendPositive: false
     },
@@ -136,7 +136,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: "Across U02, U03, U04, B2",
       icon: Layers,
       color: "from-cyan-500 to-blue-600",
-      iconBg: "bg-cyan-50 text-cyan-600 dark:bg-cyan-950/60 dark:text-cyan-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: "100% Operational",
       trendPositive: true
     },
@@ -150,7 +150,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
         : "Active operators",
       icon: Users,
       color: "from-violet-500 to-indigo-600",
-      iconBg: "bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: "10 hrs/day capacity",
       trendPositive: true
     },
@@ -162,7 +162,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: `Plan Target: ${formatNumber(data.totalPlannedProduction)}`,
       icon: CheckCircle2,
       color: "from-emerald-500 to-teal-600",
-      iconBg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: `${data.targetAchievementRate}% achieved`,
       trendPositive: data.targetAchievementRate >= 80
     },
@@ -174,7 +174,7 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       subtitle: "Actual / Target output",
       icon: Target,
       color: "from-emerald-500 to-green-600",
-      iconBg: "bg-green-50 text-green-600 dark:bg-green-950/60 dark:text-green-400",
+      iconBg: "bg-white/20 text-white backdrop-blur-sm shadow-inner",
       trend: data.targetAchievementRate >= 90 ? "Excellent" : "In Progress",
       trendPositive: data.targetAchievementRate >= 85
     }
@@ -188,33 +188,39 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
           <Card
             key={card.id}
             onClick={() => onCardClick?.(card.id)}
-            className="cursor-pointer border border-slate-200/90 hover:border-sky-400 hover:shadow-md transition-all group dark:border-slate-800 dark:hover:border-sky-600"
+            className={cn(
+              "relative cursor-pointer overflow-hidden border-0 transition-all duration-300 group hover:-translate-y-1 hover:shadow-xl",
+              `bg-gradient-to-br ${card.color}`
+            )}
           >
-            <CardContent className="p-3.5 sm:p-4">
+            {/* Glass shine effect */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <CardContent className="relative p-3.5 sm:p-4 z-10 text-white">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
+                <span className="text-[11px] font-medium text-white/80 tracking-wide uppercase truncate max-w-[120px]">
                   {card.title}
                 </span>
-                <div className={cn("flex h-7 w-7 items-center justify-center rounded-md transition-transform group-hover:scale-110", card.iconBg)}>
+                <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-sm", card.iconBg || "bg-white/20 text-white backdrop-blur-md")}>
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
 
-              <div className="mt-2">
-                <div className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+              <div className="mt-3">
+                <div className="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">
                   {card.value}
                 </div>
-                <div className="mt-1 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500 dark:text-slate-400 truncate max-w-[110px]" title={card.subtitle}>
+                <div className="mt-2 flex items-center justify-between text-[11px]">
+                  <span className="text-white/80 font-medium truncate max-w-[110px]" title={card.subtitle}>
                     {card.subtitle}
                   </span>
                   <span
                     className={cn(
-                      "font-semibold flex items-center text-[10px]",
-                      card.trendPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                      "font-bold flex items-center text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full backdrop-blur-md border border-white/10",
+                      card.trendPositive ? "text-white" : "text-rose-100"
                     )}
                   >
-                    {card.trendPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                    {card.trendPositive ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
                     {card.trend}
                   </span>
                 </div>

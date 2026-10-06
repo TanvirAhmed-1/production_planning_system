@@ -23,15 +23,8 @@ import {
   Filter,
   RotateCcw,
   Search,
-  SlidersHorizontal,
-  ChevronRight,
-  Factory,
   Layers,
-  Clock,
-  Gauge,
   X,
-  Sparkles,
-  TrendingUp,
 } from "lucide-react";
 
 export interface DailyProductionRow {
@@ -46,6 +39,7 @@ export interface DailyProductionRow {
   actualEfficiency?: number;
   efficiency: number;
   achievementRate: number;
+  clockHours?: number;
 }
 
 interface DailyProductionReportProps {
@@ -178,6 +172,7 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
     const totalGap = filteredData.reduce((acc, r) => acc + r.gap, 0);
     const totalTargetSah = filteredData.reduce((acc, r) => acc + r.targetSah, 0);
     const totalActualSah = filteredData.reduce((acc, r) => acc + r.actualSah, 0);
+    const totalClockHours = filteredData.reduce((acc, r) => acc + (r.clockHours || 0), 0);
     
     const plannedEffRows = filteredData.filter(r => (r.plannedEfficiency || 0) > 0);
     const avgPlannedEff = plannedEffRows.length > 0
@@ -197,6 +192,7 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
       totalGap,
       totalTargetSah,
       totalActualSah,
+      totalClockHours,
       avgPlannedEff,
       avgActualEff,
       avgEff: avgActualEff > 0 ? avgActualEff : avgPlannedEff,
@@ -245,9 +241,9 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
   }, [drilldownData, drilldownLineSearch]);
 
   return (
-    <Card className="shadow-sm border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+    <Card className="shadow-xl border-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800">
       {/* Header Bar */}
-      <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
+      <CardHeader className="pb-4 border-b border-slate-200/50 dark:border-slate-800/50 bg-gradient-to-r from-sky-50/50 via-white/50 to-indigo-50/50 dark:from-slate-900/50 dark:via-slate-900/50 dark:to-indigo-950/20">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -255,7 +251,7 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
               <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Daily Production Report (October 2026)
               </CardTitle>
-              <Badge className="bg-sky-600 text-white text-[10px] py-0 font-semibold">
+              <Badge className="bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-[10px] py-0.5 px-2 font-bold shadow-md shadow-sky-500/20 border-0">
                 {totals.daysCount} of {data.length} Days Active
               </Badge>
             </div>
@@ -404,29 +400,29 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
       </CardHeader>
 
       {/* Filter Summary Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-xs font-mono">
-        <div className="flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Total Filtered Target:</span>
-          <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
-            {totals.totalTarget.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">PCS</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-slate-200/50 dark:divide-slate-800/50 border-b border-slate-200/50 dark:border-slate-800/50 bg-white/40 dark:bg-slate-950/40 backdrop-blur-md">
+        <div className="flex flex-col p-4 hover:bg-sky-50/30 dark:hover:bg-slate-800/30 transition-colors">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Total Filtered Target</span>
+          <span className="text-xl font-extrabold text-slate-900 dark:text-slate-100 mt-1">
+            {totals.totalTarget.toLocaleString()} <span className="text-[11px] font-medium text-slate-400">PCS</span>
           </span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Total Filtered SAH:</span>
-          <span className="text-sm font-extrabold text-purple-700 dark:text-purple-300">
-            {totals.totalTargetSah.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">SAH</span>
+        <div className="flex flex-col p-4 hover:bg-purple-50/30 dark:hover:bg-purple-900/10 transition-colors">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Total Filtered SAH</span>
+          <span className="text-xl font-extrabold text-purple-600 dark:text-purple-400 mt-1">
+            {totals.totalTargetSah.toLocaleString()} <span className="text-[11px] font-medium text-purple-300">SAH</span>
           </span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Average Efficiency:</span>
-          <span className="text-sm font-extrabold text-indigo-600 dark:text-indigo-400">
+        <div className="flex flex-col p-4 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Average Efficiency</span>
+          <span className="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-sky-500 mt-1">
             {totals.avgEff}%
           </span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Filtered Days Count:</span>
-          <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400">
-            {totals.daysCount} Days
+        <div className="flex flex-col p-4 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Filtered Days Count</span>
+          <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
+            {totals.daysCount} <span className="text-[11px] font-medium text-emerald-300">Days</span>
           </span>
         </div>
       </div>
@@ -435,18 +431,19 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-100/90 dark:bg-slate-850/90 text-xs font-bold text-slate-700 dark:text-slate-200">
-                <TableHead className="font-bold">Date</TableHead>
-                <TableHead className="text-right font-bold">Planned Target (Pcs)</TableHead>
-                <TableHead className="text-right font-bold">Actual Output (Pcs)</TableHead>
-                <TableHead className="text-right font-bold">Gap Variance</TableHead>
-                <TableHead className="text-right font-bold">Target SAH</TableHead>
-                <TableHead className="text-right font-bold">Actual SAH</TableHead>
-                <TableHead className="text-right font-bold">Plan (Prod) Eff %</TableHead>
-                <TableHead className="text-right font-bold">Actual Floor Eff %</TableHead>
-                <TableHead className="text-right font-bold">Achievement %</TableHead>
-                <TableHead className="text-center font-bold">Status</TableHead>
-                <TableHead className="text-right font-bold pr-4">Action</TableHead>
+              <TableRow className="bg-slate-100 dark:bg-slate-800 text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 border-b-2 border-slate-200 dark:border-slate-700">
+                <TableHead className="font-extrabold py-3 text-slate-900 dark:text-slate-100">Date</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Target (Pcs)</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Actual (Pcs)</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Gap</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Machine Hrs</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Target SAH</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Actual SAH</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Plan Eff %</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Floor Eff %</TableHead>
+                <TableHead className="text-right font-extrabold py-3 text-slate-900 dark:text-slate-100">Achiev %</TableHead>
+                <TableHead className="text-center font-extrabold py-3 text-slate-900 dark:text-slate-100">Status</TableHead>
+                <TableHead className="text-right font-extrabold py-3 pr-4 text-slate-900 dark:text-slate-100">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -481,10 +478,10 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
                   return (
                     <TableRow
                       key={row.date}
-                      className="hover:bg-sky-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                      className="hover:bg-white dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer group shadow-sm hover:shadow-md relative z-0 hover:z-10"
                       onClick={() => openDateDrilldown(row.date)}
                     >
-                      <TableCell className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <TableCell className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 py-3">
                         <Calendar className="h-3.5 w-3.5 text-sky-500" />
                         <span className="font-mono">{row.date}</span>
                         <Badge variant="outline" className="text-[10px] py-0 px-1 font-semibold text-slate-500">
@@ -501,6 +498,9 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
                         <span className={row.gap > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}>
                           {row.gap > 0 ? `-${row.gap.toLocaleString()}` : `+${Math.abs(row.gap).toLocaleString()}`}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        {row.clockHours ? row.clockHours.toLocaleString() : "—"}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs text-purple-700 dark:text-purple-300 font-semibold">
                         {row.targetSah.toLocaleString()}
@@ -567,6 +567,9 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
                 </TableCell>
                 <TableCell className="text-right font-mono text-rose-600">
                   -{totals.totalGap.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono text-slate-600 dark:text-slate-300">
+                  {totals.totalClockHours > 0 ? totals.totalClockHours.toLocaleString() : "—"}
                 </TableCell>
                 <TableCell className="text-right font-mono text-purple-800 dark:text-purple-200">
                   {totals.totalTargetSah.toLocaleString()}

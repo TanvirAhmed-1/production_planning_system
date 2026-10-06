@@ -107,6 +107,18 @@ export function normalizeLineAlias(lineName: string, unitCode?: string): string[
     aliases.add(ln.replace('U04-', 'B2U4-'));
   }
 
+  // Handle Bonding lines
+  if (ln.includes('BONDING-')) {
+    aliases.add(ln.replace('BONDING-', 'B-'));
+    aliases.add(ln.replace('B1U4-BONDING-', 'U04-B-'));
+  } else if (ln.includes('-B-')) {
+    aliases.add(ln.replace('-B-', '-BONDING-'));
+  }
+  
+  if (ln.startsWith('B1U4-BONDING-')) {
+    aliases.add(ln.replace('B1U4-BONDING-', 'U04-B-'));
+  }
+
   return Array.from(aliases);
 }
 
@@ -478,12 +490,21 @@ export async function parseAndImportActualExcel(
       }
 
       // Ensure Line exists in DB
-      let line = lineByUnitAndName.get(`${unitCode}::${lineName}`) || lineByName.get(lineName);
+      let line = lineByUnitAndName.get(`${unitCode}::${lineName}`);
+      if (!line && lineByName.has(lineName)) {
+        const match = lineByName.get(lineName);
+        if (match.unitCode === unitCode || (unitCode.startsWith('U') && match.unitCode.startsWith('U'))) line = match;
+      }
       if (!line) {
         const aliases = normalizeLineAlias(lineName, unitCode);
         for (const al of aliases) {
-          line = lineByName.get(al) || lineByUnitAndName.get(`${unitCode}::${al}`);
+          line = lineByUnitAndName.get(`${unitCode}::${al}`);
           if (line) break;
+          const match = lineByName.get(al);
+          if (match && (match.unitCode === unitCode || (unitCode.startsWith('U') && match.unitCode.startsWith('U')))) {
+            line = match;
+            break;
+          }
         }
       }
 

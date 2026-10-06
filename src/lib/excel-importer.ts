@@ -32,11 +32,13 @@ export function normalizeUnitCode(rawUnit: string, lineName: string): string {
   const u = (rawUnit || '').trim().toUpperCase();
   const ln = (lineName || '').trim().toUpperCase();
 
-  if (ln.startsWith('B2U3') || u.includes('B2U3')) return 'B2U3';
-  if (ln.startsWith('B2U2') || u.includes('B2U2')) return 'B2U2';
-  if (ln.startsWith('U02') || ln.includes('U02') || u.includes('U02') || u.includes('B1U2')) return 'U02';
-  if (ln.startsWith('U03') || ln.includes('U03') || u.includes('U03') || u.includes('B1U3')) return 'U03';
-  if (ln.startsWith('U04') || ln.includes('U04') || u.includes('U04') || u.includes('B1U4')) return 'U04';
+  if (ln.startsWith('B2U3') || ln.includes('B2U3') || u.includes('B2U3')) return 'B2U3';
+  if (ln.startsWith('B2U2') || ln.includes('B2U2') || u.includes('B2U2')) return 'B2U2';
+  if (ln.startsWith('U02') || ln.includes('U02') || ln.includes('B1U2') || u.includes('U02') || u.includes('B1U2')) return 'U02';
+  if (ln.startsWith('U03') || ln.includes('U03') || ln.includes('B1U3') || u.includes('U03') || u.includes('B1U3')) return 'U03';
+  if (ln.startsWith('U04') || ln.includes('U04') || ln.includes('B1U4') || u.includes('U04') || u.includes('B1U4')) return 'U04';
+  if (ln.startsWith('S1') || u.includes('STYRAX') || u === 'S1') return 'S1';
+  if (ln.startsWith('S2') || u === 'S2') return 'S2';
   if (u.startsWith('B2') || ln.startsWith('B2')) {
     return 'B2U2';
   }
