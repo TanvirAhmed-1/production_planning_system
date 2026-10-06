@@ -326,24 +326,39 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
     // Also add all canonical units
     Object.keys(CANONICAL_UNITS).forEach(u => uniqueUnitCodes.add(u));
 
+    const existingUnits = await prisma.unit.findMany();
+    const existingUnitMap = new Map(existingUnits.map(u => [u.code, u]));
+
+    const unitsToCreate: any[] = [];
+    const unitsToUpdate: { id: string; data: any }[] = [];
+
     for (const code of uniqueUnitCodes) {
       const displayName = CANONICAL_UNITS[code] || getUnitDisplayName(code);
-      let unit = await prisma.unit.findUnique({ where: { code } });
-      if (!unit) {
-        unit = await prisma.unit.create({
-          data: {
-            id: crypto.randomUUID(),
-            code,
-            name: displayName
-          }
+      const cluster = code.startsWith('B2') ? 'B2' : code.startsWith('S') ? 'Styrax' : 'B1';
+      const existing = existingUnitMap.get(code);
+      if (!existing) {
+        const newId = crypto.randomUUID();
+        unitsToCreate.push({
+          id: newId,
+          code,
+          name: displayName,
+          cluster
         });
-      } else if (unit.name !== displayName) {
-        unit = await prisma.unit.update({
-          where: { id: unit.id },
-          data: { name: displayName }
+        unitMap.set(code, newId);
+      } else {
+        unitMap.set(code, existing.id);
+        unitsToUpdate.push({
+          id: existing.id,
+          data: { name: displayName, cluster }
         });
       }
-      unitMap.set(code, unit.id);
+    }
+
+    if (unitsToCreate.length > 0) {
+      await prisma.unit.createMany({ data: unitsToCreate });
+    }
+    for (const item of unitsToUpdate) {
+      await prisma.unit.update({ where: { id: item.id }, data: item.data });
     }
 
     // ===== 6. CREATE BATCH RECORD =====
@@ -351,6 +366,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
     await prisma.importBatch.create({
       data: {
         id: batchId,
+        batchType: 'PLAN',
         fileName,
         fileSize: buffer.length,
         month,
@@ -443,15 +459,23 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
       }
     }
 
-    // Upsert ProductionLines: strictly unique per unit (unitId + name)
+    // Prefetch all existing ProductionLines & Buyers for fast in-memory matching
+    const existingLines = await prisma.productionLine.findMany();
+    const existingBuyers = await prisma.buyer.findMany();
+
+    const existingLineMap = new Map(existingLines.map(l => [`${l.unitId}::${l.name}`, l]));
+    const existingBuyerMap = new Map(existingBuyers.map(b => [b.name, b]));
+
+    // Batch create or update lines
+    const linesToCreate: any[] = [];
+    const linesToUpdate: { id: string; data: any }[] = [];
+
     for (const line of lineDefMap.values()) {
-      const existing = await prisma.productionLine.findFirst({
-        where: { unitId: line.unitId, name: line.name }
-      });
+      const existing = existingLineMap.get(`${line.unitId}::${line.name}`);
       if (existing) {
         line.id = existing.id;
-        await prisma.productionLine.update({
-          where: { id: existing.id },
+        linesToUpdate.push({
+          id: existing.id,
           data: {
             unitId: line.unitId,
             unitCode: line.unitCode,
@@ -461,18 +485,30 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
           }
         });
       } else {
-        await prisma.productionLine.create({ data: line });
+        linesToCreate.push(line);
       }
     }
 
+    if (linesToCreate.length > 0) {
+      await prisma.productionLine.createMany({ data: linesToCreate });
+    }
+
+    for (const item of linesToUpdate) {
+      await prisma.productionLine.update({ where: { id: item.id }, data: item.data });
+    }
+
     // Upsert Buyers
+    const buyersToCreate: any[] = [];
     for (const buyer of buyerDefMap.values()) {
-      const existing = await prisma.buyer.findUnique({ where: { name: buyer.name } });
+      const existing = existingBuyerMap.get(buyer.name);
       if (existing) {
         buyer.id = existing.id;
       } else {
-        await prisma.buyer.create({ data: buyer });
+        buyersToCreate.push(buyer);
       }
+    }
+    if (buyersToCreate.length > 0) {
+      await prisma.buyer.createMany({ data: buyersToCreate, skipDuplicates: true });
     }
 
     // ===== 8. EXTRACT ORDERS & ATTACH DAILY PLAN MAPS =====
@@ -561,6 +597,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
       });
 
       // Order-level ProductionDaily records
+      const orderCluster = (uCode || '').startsWith('B2') ? 'B2' : (uCode || '').startsWith('S') ? 'Styrax' : 'B1';
       for (const [dateStr, targetQty] of Object.entries(dailyPlanMap)) {
         const dc = dateColumns.find(d => d.dateStr === dateStr);
         if (dc && targetQty > 0) {
@@ -572,6 +609,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
             date: dc.date,
             dateString: dc.dateStr,
             month,
+            cluster: orderCluster,
             orderId: orderId,
             lineId: lineObj.id,
             unitId: lineObj.unitId,
@@ -599,6 +637,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
       let lineObj = Array.from(lineDefMap.values()).find(l => l.name === ln);
       if (!lineObj) continue;
 
+      const lineCluster = (lineObj.unitCode || '').startsWith('B2') ? 'B2' : (lineObj.unitCode || '').startsWith('S') ? 'Styrax' : 'B1';
       const planRow = subtotals.PLAN;
       const sahRow = subtotals.SAH;
       const machineRow = subtotals.MACHINE;
@@ -627,6 +666,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
             date: dc.date,
             dateString: dc.dateStr,
             month,
+            cluster: lineCluster,
             orderId: null, // Indicates Line-level Daily Summary
             lineId: lineObj.id,
             unitId: lineObj.unitId,
@@ -649,7 +689,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
     }
 
     // ===== 10. BULK INSERT INTO DATABASE =====
-    const chunkSize = 500;
+    const chunkSize = 100;
     for (let i = 0; i < ordersToInsert.length; i += chunkSize) {
       await prisma.order.createMany({ data: ordersToInsert.slice(i, i + chunkSize) });
     }

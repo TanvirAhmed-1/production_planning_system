@@ -42,6 +42,8 @@ export interface DailyProductionRow {
   gap: number;
   targetSah: number;
   actualSah: number;
+  plannedEfficiency?: number;
+  actualEfficiency?: number;
   efficiency: number;
   achievementRate: number;
 }
@@ -176,10 +178,17 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
     const totalGap = filteredData.reduce((acc, r) => acc + r.gap, 0);
     const totalTargetSah = filteredData.reduce((acc, r) => acc + r.targetSah, 0);
     const totalActualSah = filteredData.reduce((acc, r) => acc + r.actualSah, 0);
-    const avgEff =
-      filteredData.length > 0
-        ? Number((filteredData.reduce((acc, r) => acc + r.efficiency, 0) / filteredData.length).toFixed(1))
-        : 0;
+    
+    const plannedEffRows = filteredData.filter(r => (r.plannedEfficiency || 0) > 0);
+    const avgPlannedEff = plannedEffRows.length > 0
+      ? Number((plannedEffRows.reduce((acc, r) => acc + (r.plannedEfficiency || 0), 0) / plannedEffRows.length).toFixed(1))
+      : 0;
+
+    const actualEffRows = filteredData.filter(r => r.actual > 0 && (r.actualEfficiency || r.efficiency) > 0);
+    const avgActualEff = actualEffRows.length > 0
+      ? Number((actualEffRows.reduce((acc, r) => acc + (r.actualEfficiency || r.efficiency), 0) / actualEffRows.length).toFixed(1))
+      : 0;
+
     const avgAch = totalTarget > 0 ? Number(((totalActual / totalTarget) * 100).toFixed(1)) : 0;
 
     return {
@@ -188,7 +197,9 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
       totalGap,
       totalTargetSah,
       totalActualSah,
-      avgEff,
+      avgPlannedEff,
+      avgActualEff,
+      avgEff: avgActualEff > 0 ? avgActualEff : avgPlannedEff,
       avgAch,
       daysCount: filteredData.length,
     };
@@ -431,7 +442,8 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
                 <TableHead className="text-right font-bold">Gap Variance</TableHead>
                 <TableHead className="text-right font-bold">Target SAH</TableHead>
                 <TableHead className="text-right font-bold">Actual SAH</TableHead>
-                <TableHead className="text-right font-bold">Efficiency %</TableHead>
+                <TableHead className="text-right font-bold">Plan (Prod) Eff %</TableHead>
+                <TableHead className="text-right font-bold">Actual Floor Eff %</TableHead>
                 <TableHead className="text-right font-bold">Achievement %</TableHead>
                 <TableHead className="text-center font-bold">Status</TableHead>
                 <TableHead className="text-right font-bold pr-4">Action</TableHead>
@@ -440,18 +452,22 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
             <TableBody>
               {filteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-12 text-slate-400">
+                  <TableCell colSpan={11} className="text-center py-12 text-slate-400">
                     No production days match your date filter. Try selecting &quot;Full Month&quot; or resetting filters.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredData.map((row) => {
+                  const hasActual = row.actual > 0;
+                  const actEff = row.actualEfficiency || (hasActual ? row.efficiency : 0);
+                  const planEff = row.plannedEfficiency || (hasActual ? 0 : row.efficiency);
+
                   let badgeVariant: any = "secondary";
                   let status = "On Track";
-                  if (row.efficiency >= 80) {
+                  if (actEff >= 80 || (!hasActual && planEff >= 80)) {
                     badgeVariant = "default";
                     status = "High Output";
-                  } else if (row.efficiency >= 70) {
+                  } else if (actEff >= 70 || (!hasActual && planEff >= 70)) {
                     badgeVariant = "secondary";
                     status = "Normal";
                   } else {
@@ -479,7 +495,7 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
                         {row.target.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {row.actual.toLocaleString()}
+                        {row.actual > 0 ? row.actual.toLocaleString() : "—"}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs font-semibold">
                         <span className={row.gap > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}>
@@ -490,21 +506,26 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
                         {row.targetSah.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {row.actualSah.toLocaleString()}
+                        {row.actualSah > 0 ? row.actualSah.toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                        {planEff > 0 ? `${planEff}%` : "—"}
                       </TableCell>
                       <TableCell
                         className={`text-right font-mono font-extrabold text-xs ${
-                          row.efficiency >= 80
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : row.efficiency >= 70
-                            ? "text-sky-600 dark:text-sky-400"
-                            : "text-amber-600 dark:text-amber-400"
+                          hasActual
+                            ? actEff >= 80
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : actEff >= 70
+                              ? "text-sky-600 dark:text-sky-400"
+                              : "text-amber-600 dark:text-amber-400"
+                            : "text-slate-400"
                         }`}
                       >
-                        {row.efficiency}%
+                        {hasActual ? `${actEff}%` : "—"}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold text-xs">
-                        {row.achievementRate}%
+                        {hasActual ? `${row.achievementRate}%` : "—"}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -554,7 +575,10 @@ export function DailyProductionReport({ data, onDateClick, onExport }: DailyProd
                   {totals.totalActualSah.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right font-mono text-indigo-700 dark:text-indigo-300">
-                  {totals.avgEff}% (Avg)
+                  {totals.avgPlannedEff}% (Plan)
+                </TableCell>
+                <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-300">
+                  {totals.avgActualEff}% (Act)
                 </TableCell>
                 <TableCell className="text-right font-mono">{totals.avgAch}%</TableCell>
                 <TableCell colSpan={2} className="text-center font-semibold text-slate-500">

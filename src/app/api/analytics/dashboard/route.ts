@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const filters = {
       month: searchParams.get('month') || undefined,
       batchId: searchParams.get('batchId') || undefined,
+      cluster: searchParams.get('cluster') || undefined,
       startDate: searchParams.get('startDate') || undefined,
       endDate: searchParams.get('endDate') || undefined,
       unitCode: searchParams.get('unitCode') || undefined,

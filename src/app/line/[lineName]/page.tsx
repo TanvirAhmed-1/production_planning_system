@@ -57,29 +57,36 @@ interface LineDetailsData {
     name: string;
     unitCode: string;
     unitName: string;
+    cluster?: string;
     manpower: number;
     workingHours: number;
     status: string;
   };
   kpis: {
     totalPlannedProduction: number;
+    totalActualProduction: number;
     totalOrderQty: number;
     totalTargetSah: number;
+    totalActualSah: number;
     totalClockHours: number;
     totalMachineHours: number;
+    totalGap: number;
+    achievementRate: number;
     overallEfficiency: number;
+    overallActualEfficiency: number;
     plannedEfficiency: number;
+    actualEfficiency: number;
     effiPlanD?: number;
     minEfficiency?: number;
     maxEfficiency?: number;
     avgEfficiency?: number;
+    avgActualEfficiency?: number;
     actualProduction: number;
-    actualSah: number;
-    actualEfficiency: number;
     manpower: number;
     ordersCount: number;
     workingDaysCount: number;
     averageDailyPlan: number;
+    averageDailyActual?: number;
     status: string;
   };
   dailyBreakdown: {
@@ -88,11 +95,13 @@ interface LineDetailsData {
     targetQty: number;
     actualQty: number;
     gap: number;
+    achievementRate: number;
     targetSah: number;
     actualSah: number;
     clockHours: number;
     machineHours: number;
     plannedEfficiency: number;
+    actualEfficiency: number;
     efficiency: number;
     stylesCount: number;
     runningStyles: {
@@ -103,6 +112,30 @@ interface LineDetailsData {
       planQty: number;
       smv: number;
     }[];
+    floorActualRecords?: {
+      style: string | null;
+      buyer: string | null;
+      oc: string | null;
+      actualPcs: number;
+      effPercent: number | null;
+      smv: number | null;
+      actualSah: number | null;
+      clockHours: number | null;
+      manpower: number | null;
+    }[];
+  }[];
+  actualFloorRecords?: {
+    id: string;
+    dateString: string;
+    buyerName: string | null;
+    style: string | null;
+    oc: string | null;
+    actualPcs: number;
+    manpower: number | null;
+    clockHours: number | null;
+    actualSah: number | null;
+    effPercent: number | null;
+    remarks: string | null;
   }[];
   orders: {
     id: string;
@@ -115,6 +148,7 @@ interface LineDetailsData {
     color: string | null;
     orderQty: number;
     planQty: number;
+    actualQty?: number;
     smv: number;
     mainCategory: string | null;
     subCategory: string | null;
@@ -144,7 +178,7 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<LineDetailsData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"daily" | "styles" | "analysis">("daily");
+  const [activeTab, setActiveTab] = useState<"daily" | "styles" | "analysis" | "floor-logs">("daily");
   
   // Style table filters
   const [styleSearch, setStyleSearch] = useState<string>("");
@@ -388,12 +422,12 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
       {/* Main Page Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Line Identity Hero Card */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/80 to-sky-50/30 p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900/90 dark:to-sky-950/20">
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/80 to-emerald-50/20 p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900/90 dark:to-emerald-950/20">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
             {/* Left Info */}
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-600 text-white font-bold shadow-md shadow-sky-600/20">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/20">
                   <Layers className="h-5 w-5" />
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -402,37 +436,46 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                 <Badge className="bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800 font-bold text-xs px-2.5 py-0.5">
                   Unit {line.unitCode} ({line.unitName})
                 </Badge>
-                <Badge variant="outline" className={`font-bold text-xs px-2.5 py-0.5 ${getEfficiencyBadgeColor(effiPlanDValue)}`}>
-                  {effiPlanDValue >= 80 ? "High Efficiency" : effiPlanDValue >= 70 ? "Normal Performance" : effiPlanDValue >= 60 ? "Needs Attention" : "Low / Bottleneck"}
+                {line.cluster && (
+                  <Badge className="bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800 font-bold text-xs px-2.5 py-0.5">
+                    Cluster: {line.cluster}
+                  </Badge>
+                )}
+                <Badge variant="outline" className={`font-bold text-xs px-2.5 py-0.5 ${getEfficiencyBadgeColor(kpis.overallActualEfficiency || kpis.plannedEfficiency)}`}>
+                  {(kpis.overallActualEfficiency || kpis.plannedEfficiency) >= 80 ? "High Efficiency" : (kpis.overallActualEfficiency || kpis.plannedEfficiency) >= 70 ? "Normal Performance" : "Under Benchmark"}
                 </Badge>
               </div>
 
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-                Comprehensive 31-day sign-off production performance for <strong className="text-slate-800 dark:text-slate-200">October 2026</strong>. 
+                Comprehensive 31-day production performance tracking for <strong className="text-slate-800 dark:text-slate-200">October 2026</strong>. 
                 Allocated manpower of <strong className="text-slate-800 dark:text-slate-200">{line.manpower} operators</strong> at <strong className="text-slate-800 dark:text-slate-200">{line.workingHours} working hours/day</strong>.
               </p>
             </div>
 
-            {/* Right Quick Summary Gauge - EFFI. PLAN/D */}
-            <div className="flex items-center gap-4 shrink-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-xl p-3.5 border border-emerald-200 dark:border-emerald-800/60 shadow-xs ring-1 ring-emerald-500/20">
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                  <Percent className="h-3 w-3" />
-                  <span>EFFI. PLAN / D</span>
+            {/* Right Dual Efficiency Gauges */}
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Actual Floor Efficiency */}
+              <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-xl p-3 border border-emerald-200 dark:border-emerald-800/60 shadow-xs ring-1 ring-emerald-500/20 text-right min-w-[130px]">
+                <div className="flex items-center justify-end gap-1 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>ACTUAL EFF</span>
                 </div>
-                <span className="text-2xl sm:text-3xl font-extrabold font-mono" style={{ color: getEfficiencyColorHex(effiPlanDValue) }}>
-                  {effiPlanDValue}%
+                <span className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
+                  {kpis.overallActualEfficiency > 0 ? `${kpis.overallActualEfficiency}%` : "—"}
                 </span>
-                <span className="text-[10px] text-slate-400 block font-medium">Factory Benchmark: 80%</span>
+                <span className="text-[10px] text-slate-400 block font-medium">Floor Actual</span>
               </div>
-              <div className="h-12 w-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    height: `${Math.min(100, effiPlanDValue)}%`,
-                    backgroundColor: getEfficiencyColorHex(effiPlanDValue)
-                  }}
-                />
+
+              {/* Planned (Prod) Efficiency */}
+              <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-xl p-3 border border-indigo-200 dark:border-indigo-800/60 shadow-xs text-right min-w-[130px]">
+                <div className="flex items-center justify-end gap-1 text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
+                  <Percent className="h-3 w-3" />
+                  <span>PLAN EFF</span>
+                </div>
+                <span className="text-2xl font-extrabold font-mono text-indigo-600 dark:text-indigo-400">
+                  {kpis.plannedEfficiency}%
+                </span>
+                <span className="text-[10px] text-slate-400 block font-medium">Target: 80%</span>
               </div>
             </div>
           </div>
@@ -440,27 +483,27 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
 
         {/* 6 Key Performance Metric Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          {/* Card 1: EFFI. PLAN/D (Primary Sign-off Efficiency) */}
-          <Card className="border-emerald-200/90 bg-gradient-to-br from-emerald-50/40 via-white to-white dark:border-emerald-900/60 dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 shadow-xs hover:border-emerald-400 transition-all ring-1 ring-emerald-500/10">
+          {/* Card 1: Actual Production Output */}
+          <Card className="border-emerald-300/90 bg-gradient-to-br from-emerald-50/50 via-white to-white dark:border-emerald-900/60 dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 shadow-xs ring-1 ring-emerald-500/20">
             <CardContent className="p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 mb-1.5">
-                <span className="text-[11px] font-extrabold uppercase tracking-tight truncate">EFFI. PLAN / D</span>
+                <span className="text-[11px] font-extrabold uppercase tracking-tight truncate">Actual Output</span>
                 <TrendingUp className="h-4 w-4 text-emerald-600 shrink-0" />
               </div>
               <div className="text-lg sm:text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
-                {effiPlanDValue}%
+                {kpis.totalActualProduction > 0 ? kpis.totalActualProduction.toLocaleString() : "—"}
               </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
-                {effiPlanDValue >= 80 ? "Above 80% Target" : "Under Target"}
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block mt-0.5">
+                {kpis.totalActualProduction > 0 ? `${kpis.achievementRate}% of Plan` : "Awaiting floor data"}
               </span>
             </CardContent>
           </Card>
 
-          {/* Card 2: Total Planned Output (PLAN/DAY) */}
+          {/* Card 2: Total Planned Output */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-sky-300 dark:hover:border-sky-800 transition-all">
             <CardContent className="p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="text-[11px] font-semibold truncate">PLAN / DAY Output</span>
+                <span className="text-[11px] font-semibold truncate">Planned Target</span>
                 <Target className="h-4 w-4 text-sky-600 shrink-0" />
               </div>
               <div className="text-lg sm:text-xl font-extrabold font-mono text-slate-900 dark:text-slate-100">
@@ -472,78 +515,85 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
             </CardContent>
           </Card>
 
-          {/* Card 3: Standard Allowed Hours (SAH) */}
-          <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-800 transition-all">
+          {/* Card 3: Gap / Variance */}
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-rose-300 dark:hover:border-rose-800 transition-all">
             <CardContent className="p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="text-[11px] font-semibold truncate">Planned SAH</span>
-                <Clock className="h-4 w-4 text-indigo-600 shrink-0" />
+                <span className="text-[11px] font-semibold truncate">Gap Variance</span>
+                <AlertOctagon className="h-4 w-4 text-rose-500 shrink-0" />
               </div>
-              <div className="text-lg sm:text-xl font-extrabold font-mono text-indigo-600 dark:text-indigo-400">
-                {kpis.totalTargetSah.toLocaleString()} <span className="text-xs font-normal">hrs</span>
+              <div className={`text-lg sm:text-xl font-extrabold font-mono ${kpis.totalGap > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
+                {kpis.totalActualProduction > 0
+                  ? kpis.totalGap > 0
+                    ? `-${kpis.totalGap.toLocaleString()}`
+                    : `+${Math.abs(kpis.totalGap).toLocaleString()}`
+                  : `-${kpis.totalPlannedProduction.toLocaleString()}`}
               </div>
               <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                Std. Allowed Hours
+                {kpis.totalGap > 0 ? "Production Deficit" : "Target Achieved"}
               </span>
             </CardContent>
           </Card>
 
-          {/* Card 4: Machine / Clock Hours */}
+          {/* Card 4: Standard Allowed Hours (SAH) */}
+          <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-800 transition-all">
+            <CardContent className="p-3.5 sm:p-4">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+                <span className="text-[11px] font-semibold truncate">Earned SAH</span>
+                <Clock className="h-4 w-4 text-indigo-600 shrink-0" />
+              </div>
+              <div className="text-lg sm:text-xl font-extrabold font-mono text-indigo-600 dark:text-indigo-400">
+                {kpis.totalActualSah > 0 ? kpis.totalActualSah.toLocaleString() : kpis.totalTargetSah.toLocaleString()} <span className="text-xs font-normal">hrs</span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                {kpis.totalActualSah > 0 ? `Plan: ${kpis.totalTargetSah.toLocaleString()} hrs` : "Planned SAH"}
+              </span>
+            </CardContent>
+          </Card>
+
+          {/* Card 5: Machine / Clock Hours */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-amber-300 dark:hover:border-amber-800 transition-all">
             <CardContent className="p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="text-[11px] font-semibold truncate">MACHINE HR (CLK)</span>
+                <span className="text-[11px] font-semibold truncate">Machine Hours</span>
                 <BarChart3 className="h-4 w-4 text-amber-600 shrink-0" />
               </div>
               <div className="text-lg sm:text-xl font-extrabold font-mono text-amber-600 dark:text-amber-400">
                 {kpis.totalClockHours.toLocaleString()} <span className="text-xs font-normal">hrs</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                Line Clock Capacity
+                Capacity ({kpis.manpower} ops × 10h)
               </span>
             </CardContent>
           </Card>
 
-          {/* Card 5: Allocated Manpower */}
-          <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-sky-300 dark:hover:border-sky-800 transition-all">
-            <CardContent className="p-3.5 sm:p-4">
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="text-[11px] font-semibold truncate">Line Manpower</span>
-                <Users className="h-4 w-4 text-slate-600 dark:text-slate-300 shrink-0" />
-              </div>
-              <div className="text-lg sm:text-xl font-extrabold font-mono text-slate-800 dark:text-slate-200">
-                {kpis.manpower} <span className="text-xs font-normal">Ops</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                {kpis.manpower * 10} Machine Hrs / Day
-              </span>
-            </CardContent>
-          </Card>
-
-          {/* Card 6: Average Daily Target */}
+          {/* Card 6: Average Daily Output */}
           <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-teal-300 dark:hover:border-teal-800 transition-all">
             <CardContent className="p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="text-[11px] font-semibold truncate">Avg. Daily Plan</span>
+                <span className="text-[11px] font-semibold truncate">Avg Daily Output</span>
                 <Gauge className="h-4 w-4 text-teal-600 shrink-0" />
               </div>
               <div className="text-lg sm:text-xl font-extrabold font-mono text-teal-600 dark:text-teal-400">
-                {kpis.averageDailyPlan.toLocaleString()} <span className="text-xs font-normal">pcs</span>
+                {kpis.totalActualProduction > 0 && kpis.averageDailyActual
+                  ? kpis.averageDailyActual.toLocaleString()
+                  : kpis.averageDailyPlan.toLocaleString()}{" "}
+                <span className="text-xs font-normal">pcs</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                Across {kpis.workingDaysCount} Working Days
+                {kpis.workingDaysCount} Working Days
               </span>
             </CardContent>
           </Card>
         </div>
 
-        {/* Master Excel Sign-Off Subtotal Banner (4 Core Line Metrics) */}
+        {/* Master Comparison Banner (Plan vs Actual) */}
         <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
             <div className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4 text-sky-600" />
+              <FileSpreadsheet className="h-4 w-4 text-indigo-600" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Excel Sign-off Line Master Specification: 4 Core Totals
+                Planned Target vs Actual Floor Output Specification
               </span>
             </div>
             <Badge variant="outline" className="text-[10px] font-mono py-0 text-slate-500">
@@ -552,16 +602,19 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* 1. PLAN / DAY */}
+            {/* 1. Production Output */}
             <div className="rounded-lg bg-sky-50/70 p-2.5 border border-sky-200 dark:bg-sky-950/40 dark:border-sky-800/60">
               <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider block">
-                1. PLAN / DAY
+                1. PRODUCTION PCS
               </span>
-              <div className="text-lg font-extrabold font-mono text-sky-900 dark:text-sky-100 mt-0.5">
-                {kpis.totalPlannedProduction.toLocaleString()} <span className="text-xs font-normal">pcs</span>
+              <div className="text-base font-extrabold font-mono text-slate-900 dark:text-slate-100 mt-0.5 flex items-baseline gap-1.5">
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                  {kpis.totalActualProduction > 0 ? kpis.totalActualProduction.toLocaleString() : "0"} Act
+                </span>
+                <span className="text-xs text-slate-400">/ {kpis.totalPlannedProduction.toLocaleString()} Plan</span>
               </div>
               <span className="text-[10px] text-sky-600/80 dark:text-sky-400 block mt-0.5">
-                Avg: {kpis.averageDailyPlan.toLocaleString()} pcs/day
+                {kpis.achievementRate}% Target Achieved
               </span>
             </div>
 
@@ -570,20 +623,23 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
               <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider block">
                 2. SAH (HOURS)
               </span>
-              <div className="text-lg font-extrabold font-mono text-purple-900 dark:text-purple-100 mt-0.5">
-                {kpis.totalTargetSah.toLocaleString()} <span className="text-xs font-normal">hrs</span>
+              <div className="text-base font-extrabold font-mono text-purple-900 dark:text-purple-100 mt-0.5 flex items-baseline gap-1.5">
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                  {kpis.totalActualSah > 0 ? kpis.totalActualSah.toLocaleString() : "0"} Act
+                </span>
+                <span className="text-xs text-slate-400">/ {kpis.totalTargetSah.toLocaleString()} Plan</span>
               </div>
               <span className="text-[10px] text-purple-600/80 dark:text-purple-400 block mt-0.5">
-                Earned Standard Hours
+                Earned Standard Allowed Hours
               </span>
             </div>
 
             {/* 3. MACHINE HR */}
             <div className="rounded-lg bg-amber-50/70 p-2.5 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800/60">
               <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider block">
-                3. MACHINE HR (CLK)
+                3. MACHINE CAPACITY
               </span>
-              <div className="text-lg font-extrabold font-mono text-amber-900 dark:text-amber-100 mt-0.5">
+              <div className="text-base font-extrabold font-mono text-amber-900 dark:text-amber-100 mt-0.5">
                 {kpis.totalClockHours.toLocaleString()} <span className="text-xs font-normal">hrs</span>
               </div>
               <span className="text-[10px] text-amber-600/80 dark:text-amber-400 block mt-0.5">
@@ -591,40 +647,55 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
               </span>
             </div>
 
-            {/* 4. EFFI. PLAN / D */}
+            {/* 4. EFFICIENCY */}
             <div className="rounded-lg bg-emerald-50/80 p-2.5 border border-emerald-300 dark:bg-emerald-950/50 dark:border-emerald-700 ring-1 ring-emerald-500/20">
               <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
-                4. EFFI. PLAN / D
+                4. EFFICIENCY RATING
               </span>
-              <div className="text-lg font-extrabold font-mono text-emerald-700 dark:text-emerald-300 mt-0.5">
-                {effiPlanDValue}%
+              <div className="text-base font-extrabold font-mono mt-0.5 flex items-baseline gap-1.5">
+                <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+                  {kpis.overallActualEfficiency > 0 ? `${kpis.overallActualEfficiency}% Act` : "—"}
+                </span>
+                <span className="text-xs text-indigo-600 dark:text-indigo-400">/ {kpis.plannedEfficiency}% Plan</span>
               </div>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block mt-0.5">
-                Target: 80.0% • {effiPlanDValue >= 80 ? "Passed" : "Below"}
+                Target: 80.0% • {kpis.overallActualEfficiency >= 80 ? "Passed" : "Under Benchmark"}
               </span>
             </div>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
           <button
             onClick={() => setActiveTab("daily")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
               activeTab === "daily"
-                ? "bg-sky-600 text-white shadow-md shadow-sky-600/20"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                 : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
             }`}
           >
             <Calendar className="h-4 w-4" />
-            <span>Daily 31-Day Date Matrix & Trends</span>
+            <span>Daily Planned vs Actual Matrix & Trends</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("floor-logs")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
+              activeTab === "floor-logs"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
+            }`}
+          >
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <span>Floor Actual Tracker Logs ({data.actualFloorRecords?.length || 0})</span>
           </button>
 
           <button
             onClick={() => setActiveTab("styles")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
               activeTab === "styles"
-                ? "bg-sky-600 text-white shadow-md shadow-sky-600/20"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                 : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
             }`}
           >
@@ -636,7 +707,7 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
             onClick={() => setActiveTab("analysis")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
               activeTab === "analysis"
-                ? "bg-sky-600 text-white shadow-md shadow-sky-600/20"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                 : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
             }`}
           >
@@ -650,17 +721,17 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
           <div className="space-y-6">
             {/* Visual Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Chart 1: Daily Target & SAH */}
+              {/* Chart 1: Daily Target vs Actual */}
               <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-sm font-bold flex items-center gap-2">
                         <BarChart3 className="h-4 w-4 text-sky-600" />
-                        Daily Planned Production & SAH (October 2026)
+                        Target vs Actual Daily Output (October 2026)
                       </CardTitle>
                       <CardDescription className="text-xs">
-                        Daily planned pieces (bars) vs earned SAH hours (line)
+                        Daily planned pieces vs actual garments produced on Line {line.name}
                       </CardDescription>
                     </div>
                   </div>
@@ -676,8 +747,7 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                           tick={{ fontSize: 10 }}
                           stroke="#94a3b8"
                         />
-                        <YAxis yAxisId="left" stroke="#0284c7" tick={{ fontSize: 10 }} />
-                        <YAxis yAxisId="right" orientation="right" stroke="#8b5cf6" tick={{ fontSize: 10 }} />
+                        <YAxis stroke="#0284c7" tick={{ fontSize: 10 }} />
                         <Tooltip
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
@@ -686,10 +756,10 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                                 <div className="rounded-lg border border-slate-200 bg-white/95 p-2.5 shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900 text-xs">
                                   <div className="font-bold text-slate-900 dark:text-slate-100">{d.date} ({d.dayOfWeek})</div>
                                   <div className="mt-1 space-y-1 font-mono">
-                                    <div className="text-sky-600">PLAN / DAY: {d.targetQty.toLocaleString()} pcs</div>
-                                    <div className="text-purple-600">SAH: {d.targetSah} hrs</div>
-                                    <div className="text-amber-600">MACHINE HR: {d.machineHours} hrs</div>
-                                    <div className="text-emerald-600 font-bold">EFFI. PLAN / D: {Math.round(d.plannedEfficiency)}%</div>
+                                    <div className="text-sky-600">Plan Target: {d.targetQty.toLocaleString()} pcs</div>
+                                    <div className="text-emerald-600 font-bold">Actual Output: {d.actualQty > 0 ? d.actualQty.toLocaleString() : "0"} pcs</div>
+                                    <div className="text-purple-600">Actual SAH: {d.actualSah} hrs</div>
+                                    <div className="text-slate-600">Actual Eff: {d.actualEfficiency || 0}%</div>
                                   </div>
                                 </div>
                               );
@@ -698,25 +768,26 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                           }}
                         />
                         <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                        <Bar yAxisId="left" dataKey="targetQty" name="Plan Qty (Pcs)" fill="#0284c7" radius={[3, 3, 0, 0]} />
-                        <Line yAxisId="right" type="monotone" dataKey="targetSah" name="Target SAH (Hrs)" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 2 }} />
+                        <Bar dataKey="targetQty" name="Plan Target (Pcs)" fill="#38bdf8" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="actualQty" name="Actual Output (Pcs)" fill="#10b981" radius={[3, 3, 0, 0]} />
+                        <Line type="monotone" dataKey="actualSah" name="Actual SAH" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 2 }} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Chart 2: Daily EFFI. PLAN / D % Trend Line */}
+              {/* Chart 2: Planned vs Actual Efficiency Curve */}
               <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-sm font-bold flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-emerald-600" />
-                        Daily EFFI. PLAN / D (%) vs 80% Factory Benchmark
+                        Daily Planned vs Actual Efficiency (%)
                       </CardTitle>
                       <CardDescription className="text-xs">
-                        Daily planned efficiency trajectory across October 2026
+                        Actual floor efficiency curve vs planned efficiency trajectory
                       </CardDescription>
                     </div>
                   </div>
@@ -741,9 +812,9 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                                 <div className="rounded-lg border border-slate-200 bg-white/95 p-2.5 shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900 text-xs">
                                   <div className="font-bold text-slate-900 dark:text-slate-100">{d.date} ({d.dayOfWeek})</div>
                                   <div className="mt-1 space-y-1 font-mono">
-                                    <div className="text-emerald-600 font-bold">EFFI. PLAN / D: {Math.round(d.plannedEfficiency)}%</div>
-                                    <div className="text-purple-600">SAH: {d.targetSah} hrs</div>
-                                    <div className="text-slate-500">MACHINE HR: {d.machineHours} hrs</div>
+                                    <div className="text-emerald-600 font-bold">Actual Eff: {d.actualEfficiency || 0}%</div>
+                                    <div className="text-indigo-600">Plan Eff: {d.plannedEfficiency || 0}%</div>
+                                    <div className="text-purple-600">Actual SAH: {d.actualSah} hrs</div>
                                   </div>
                                 </div>
                               );
@@ -752,8 +823,8 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                           }}
                         />
                         <ReferenceLine y={80} stroke="#10b981" strokeDasharray="4 4" label={{ value: "80% Target", fill: "#10b981", fontSize: 10, position: "top" }} />
-                        <ReferenceLine y={60} stroke="#ef4444" strokeDasharray="4 4" label={{ value: "60% Min", fill: "#ef4444", fontSize: 10, position: "bottom" }} />
-                        <Area type="monotone" dataKey="plannedEfficiency" name="EFFI. PLAN/D (%)" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2.5} dot={{ r: 3 }} />
+                        <Area type="monotone" dataKey="actualEfficiency" name="Actual Floor Eff %" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2.5} dot={{ r: 3 }} />
+                        <Line type="monotone" dataKey="plannedEfficiency" name="Plan Eff %" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -768,10 +839,10 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                   <div>
                     <CardTitle className="text-base font-bold flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-sky-600" />
-                      Daily Production & EFFI. PLAN / D Breakdown (1st – 31st Oct 2026)
+                      Daily Target vs Actual Breakdown (1st – 31st Oct 2026)
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Detailed day-by-day record of planned quantity, standard hours, machine hours, and running styles
+                      Day-by-day record of planned quantity, actual floor output, variance, SAH hours, and efficiencies
                     </CardDescription>
                   </div>
 
@@ -787,19 +858,21 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                       <TableRow className="bg-slate-50/80 dark:bg-slate-900/80 text-xs font-bold">
                         <TableHead className="w-28">Date</TableHead>
                         <TableHead className="w-16">Day</TableHead>
-                        <TableHead className="text-right">PLAN / DAY</TableHead>
-                        <TableHead className="text-right">SAH (Hrs)</TableHead>
-                        <TableHead className="text-right">MACHINE HR</TableHead>
-                        <TableHead className="text-right bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-extrabold">
-                          EFFI. PLAN / D (%)
-                        </TableHead>
-                        <TableHead className="w-32 text-center">Efficiency Rating</TableHead>
-                        <TableHead className="min-w-[200px]">Running Styles</TableHead>
+                        <TableHead className="text-right">Planned Target</TableHead>
+                        <TableHead className="text-right text-emerald-700 dark:text-emerald-400 font-extrabold">Actual Output</TableHead>
+                        <TableHead className="text-right">Gap Variance</TableHead>
+                        <TableHead className="text-right">Target SAH</TableHead>
+                        <TableHead className="text-right">Actual SAH</TableHead>
+                        <TableHead className="text-right text-indigo-700 dark:text-indigo-300">Plan Eff %</TableHead>
+                        <TableHead className="text-right text-emerald-700 dark:text-emerald-300 font-extrabold">Actual Eff %</TableHead>
+                        <TableHead className="text-right">Achieved %</TableHead>
+                        <TableHead className="min-w-[200px]">Running Styles & Floor Output</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {dailyBreakdown.map((day) => {
-                        const isOffDay = day.targetQty === 0 && day.clockHours === 0;
+                        const isOffDay = day.targetQty === 0 && day.actualQty === 0 && day.clockHours === 0;
+                        const hasActual = day.actualQty > 0;
                         return (
                           <TableRow
                             key={day.date}
@@ -816,34 +889,53 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                             <TableCell className="text-right font-mono font-bold text-slate-800 dark:text-slate-200">
                               {day.targetQty > 0 ? day.targetQty.toLocaleString() : "-"}
                             </TableCell>
-                            <TableCell className="text-right font-mono font-semibold text-purple-600 dark:text-purple-400">
-                              {day.targetSah > 0 ? day.targetSah.toFixed(2) : "-"}
+                            <TableCell className="text-right font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
+                              {hasActual ? day.actualQty.toLocaleString() : "—"}
                             </TableCell>
-                            <TableCell className="text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
-                              {day.machineHours > 0 ? day.machineHours.toFixed(0) : "-"}
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-extrabold bg-emerald-50/30 dark:bg-emerald-950/20">
-                              {day.plannedEfficiency > 0 ? (
-                                <span style={{ color: getEfficiencyColorHex(day.plannedEfficiency) }}>
-                                  {Math.round(day.plannedEfficiency)}%
+                            <TableCell className="text-right font-mono font-semibold">
+                              {hasActual ? (
+                                <span className={day.gap > 0 ? "text-rose-600" : "text-emerald-600"}>
+                                  {day.gap > 0 ? `-${day.gap.toLocaleString()}` : `+${Math.abs(day.gap).toLocaleString()}`}
                                 </span>
                               ) : (
                                 <span className="text-slate-400">-</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-center">
-                              {isOffDay ? (
-                                <Badge variant="outline" className="text-[10px] py-0 text-slate-400 border-slate-300">
-                                  Off / Holiday
-                                </Badge>
+                            <TableCell className="text-right font-mono font-semibold text-purple-600 dark:text-purple-400">
+                              {day.targetSah > 0 ? day.targetSah.toFixed(2) : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
+                              {hasActual && day.actualSah > 0 ? day.actualSah.toFixed(2) : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                              {day.plannedEfficiency > 0 ? `${Math.round(day.plannedEfficiency)}%` : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-extrabold">
+                              {hasActual && (day.actualEfficiency || 0) > 0 ? (
+                                <span style={{ color: getEfficiencyColorHex(day.actualEfficiency || 0) }}>
+                                  {day.actualEfficiency}%
+                                </span>
                               ) : (
-                                <Badge variant="outline" className={`text-[10px] py-0 font-bold ${getEfficiencyBadgeColor(day.plannedEfficiency)}`}>
-                                  {day.plannedEfficiency >= 80 ? "On Target" : day.plannedEfficiency >= 60 ? "Normal" : "Bottleneck"}
-                                </Badge>
+                                <span className="text-slate-400">—</span>
                               )}
                             </TableCell>
+                            <TableCell className="text-right font-mono font-bold">
+                              {hasActual ? `${day.achievementRate}%` : "—"}
+                            </TableCell>
                             <TableCell>
-                              {day.runningStyles.length > 0 ? (
+                              {hasActual && day.floorActualRecords && day.floorActualRecords.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {day.floorActualRecords.map((ar, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center gap-1 rounded bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 text-[10px] font-mono text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                      title={`${ar.buyer || ""} - ${ar.style || ""} (${ar.actualPcs} pcs, ${ar.effPercent || 0}% eff)`}
+                                    >
+                                      <strong>{ar.buyer || "Actual"}</strong>: {ar.style || "Style"} (<strong>{ar.actualPcs.toLocaleString()}</strong> pcs)
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : day.runningStyles.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                   {day.runningStyles.map((s, idx) => (
                                     <span
@@ -856,7 +948,7 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                                   ))}
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-slate-400 italic">No production planned</span>
+                                <span className="text-[10px] text-slate-400 italic">No production recorded</span>
                               )}
                             </TableCell>
                           </TableRow>
@@ -874,19 +966,26 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                         <TableCell className="text-right font-mono font-extrabold text-sky-800 dark:text-sky-300 text-sm">
                           {kpis.totalPlannedProduction.toLocaleString()} pcs
                         </TableCell>
+                        <TableCell className="text-right font-mono font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
+                          {kpis.totalActualProduction > 0 ? `${kpis.totalActualProduction.toLocaleString()} pcs` : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-extrabold text-rose-600">
+                          {kpis.totalActualProduction > 0 ? `-${kpis.totalGap.toLocaleString()}` : "-"}
+                        </TableCell>
                         <TableCell className="text-right font-mono font-extrabold text-purple-800 dark:text-purple-300">
                           {kpis.totalTargetSah.toLocaleString()} hrs
                         </TableCell>
-                        <TableCell className="text-right font-mono font-extrabold text-amber-800 dark:text-amber-300">
-                          {kpis.totalClockHours.toLocaleString()} hrs
+                        <TableCell className="text-right font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                          {kpis.totalActualSah > 0 ? `${kpis.totalActualSah.toLocaleString()} hrs` : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-extrabold text-indigo-700 dark:text-indigo-300">
+                          {kpis.plannedEfficiency}%
                         </TableCell>
                         <TableCell className="text-right font-mono font-extrabold text-emerald-700 dark:text-emerald-300 text-sm bg-emerald-100/60 dark:bg-emerald-950/80">
-                          {effiPlanDValue}%
+                          {kpis.overallActualEfficiency > 0 ? `${kpis.overallActualEfficiency}%` : "—"}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Badge className="bg-emerald-600 text-white text-[10px] py-0 font-bold">
-                            {effiPlanDValue >= 80 ? "Benchmark Met" : "Target Not Met"}
-                          </Badge>
+                        <TableCell className="text-right font-mono font-bold">
+                          {kpis.totalActualProduction > 0 ? `${kpis.achievementRate}%` : "—"}
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400 text-[11px] font-medium">
                           {kpis.ordersCount} Allocated Styles ({buyersList.join(", ") || "Active"})
@@ -895,6 +994,92 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
                     </TableBody>
                   </Table>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* TAB: FLOOR ACTUAL TRACKER LOGS */}
+        {activeTab === "floor-logs" && (
+          <div className="space-y-4">
+            <Card className="border-slate-200/90 dark:border-slate-800 shadow-xs">
+              <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-emerald-600" />
+                      Daily Floor Actual Production Tracker Logs (Line {line.name})
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Raw floor actual logs ingested from actual production tracker sheets
+                    </CardDescription>
+                  </div>
+                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-xs">
+                    {data.actualFloorRecords?.length || 0} Floor Logs Recorded
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {(!data.actualFloorRecords || data.actualFloorRecords.length === 0) ? (
+                  <div className="py-16 text-center text-sm text-slate-400">
+                    No floor actual tracker logs recorded for Line {line.name} yet.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80 dark:bg-slate-900/80 text-xs font-bold">
+                          <TableHead>Date</TableHead>
+                          <TableHead>Buyer</TableHead>
+                          <TableHead>Style Ref</TableHead>
+                          <TableHead>OC #</TableHead>
+                          <TableHead className="text-right text-emerald-700 dark:text-emerald-300 font-extrabold">Actual Output (Pcs)</TableHead>
+                          <TableHead className="text-right">Manpower (MO)</TableHead>
+                          <TableHead className="text-right">Clock Hrs</TableHead>
+                          <TableHead className="text-right">MC SAH</TableHead>
+                          <TableHead className="text-right">Floor Efficiency %</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.actualFloorRecords.map((rec: any, idx: number) => (
+                          <TableRow key={idx} className="hover:bg-emerald-50/20 text-xs">
+                            <TableCell className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                              {rec.dateString}
+                            </TableCell>
+                            <TableCell className="font-semibold text-slate-700 dark:text-slate-300">
+                              {rec.buyerName || "—"}
+                            </TableCell>
+                            <TableCell className="font-mono font-bold text-indigo-700 dark:text-indigo-300">
+                              {rec.style || "—"}
+                            </TableCell>
+                            <TableCell className="font-mono text-slate-600 dark:text-slate-400">
+                              {rec.oc || "—"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                              {rec.actualPcs?.toLocaleString() || 0}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-slate-600">
+                              {rec.manpower || "—"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-slate-600">
+                              {rec.clockHours || "—"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-purple-700 dark:text-purple-300 font-semibold">
+                              {rec.actualSah || "—"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-extrabold">
+                              {rec.effPercent ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold">
+                                  {rec.effPercent}%
+                                </Badge>
+                              ) : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

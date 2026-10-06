@@ -9,6 +9,7 @@ import { SearchableSelect } from "@/components/shared/searchable-select";
 
 export interface FilterState {
   batchId?: string;
+  cluster?: string;
   month?: string;
   unitCode: string;
   lineName: string;
@@ -25,8 +26,9 @@ interface GlobalFilterBarProps {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   filterOptions: {
-    units: { label: string; value: string }[];
-    lines: { label: string; value: string; unit: string }[];
+    clusters?: { label: string; value: string }[];
+    units: { label: string; value: string; cluster?: string }[];
+    lines: { label: string; value: string; unit: string; cluster?: string }[];
     buyers: { label: string; value: string }[];
     seasons: { label: string; value: string }[];
     months?: { label: string; value: string }[];
@@ -47,16 +49,28 @@ export function GlobalFilterBar({
 }: GlobalFilterBarProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
 
-  const filteredLines = React.useMemo(() => {
-    if (!filters.unitCode || filters.unitCode === "ALL") {
-      return filterOptions.lines;
+  const filteredUnits = React.useMemo(() => {
+    if (!filters.cluster || filters.cluster === "ALL") {
+      return filterOptions.units;
     }
-    return filterOptions.lines.filter(l => l.unit === filters.unitCode);
-  }, [filters.unitCode, filterOptions.lines]);
+    return filterOptions.units.filter(u => !u.cluster || u.cluster === filters.cluster);
+  }, [filters.cluster, filterOptions.units]);
+
+  const filteredLines = React.useMemo(() => {
+    let list = filterOptions.lines;
+    if (filters.cluster && filters.cluster !== "ALL") {
+      list = list.filter(l => !l.cluster || l.cluster === filters.cluster);
+    }
+    if (filters.unitCode && filters.unitCode !== "ALL") {
+      list = list.filter(l => l.unit === filters.unitCode);
+    }
+    return list;
+  }, [filters.cluster, filters.unitCode, filterOptions.lines]);
 
   const activeFiltersCount = React.useMemo(() => {
     let count = 0;
     if (filters.batchId && filters.batchId !== "ALL") count++;
+    if (filters.cluster && filters.cluster !== "ALL") count++;
     if (filters.month && filters.month !== "ALL") count++;
     if (filters.unitCode && filters.unitCode !== "ALL") count++;
     if (filters.lineName && filters.lineName !== "ALL") count++;
@@ -76,6 +90,7 @@ export function GlobalFilterBar({
   const handleResetAll = () => {
     setFilters({
       batchId: "ALL",
+      cluster: "ALL",
       month: "ALL",
       unitCode: "ALL",
       lineName: "ALL",
@@ -115,10 +130,10 @@ export function GlobalFilterBar({
           {/* Uploaded Excel File / Batch Selector */}
           {filterOptions.batches && filterOptions.batches.length > 0 && (
             <SearchableSelect
-              label="File:"
-              placeholder="All Excel Files"
-              searchPlaceholder="Search file..."
-              allOptionLabel="All Excel Files"
+              label="Plan/File:"
+              placeholder="All Plans & Trackers"
+              searchPlaceholder="Search plan file..."
+              allOptionLabel="All Plans & Trackers"
               allOptionValue="ALL"
               value={filters.batchId || "ALL"}
               options={filterOptions.batches.map(b => ({
@@ -141,6 +156,26 @@ export function GlobalFilterBar({
               dropdownWidth="w-72"
             />
           )}
+
+          {/* Cluster Selector */}
+          <SearchableSelect
+            label="Cluster:"
+            placeholder="All Clusters"
+            searchPlaceholder="Search cluster..."
+            allOptionLabel="All Clusters"
+            allOptionValue="ALL"
+            value={filters.cluster || "ALL"}
+            options={filterOptions.clusters || [
+              { label: "All Clusters", value: "ALL" },
+              { label: "B1 Cluster", value: "B1" },
+              { label: "B2 Cluster", value: "B2" },
+              { label: "Styrax Cluster", value: "Styrax" }
+            ]}
+            onChange={(val) => {
+              setFilters(prev => ({ ...prev, cluster: val, unitCode: "ALL", lineName: "ALL" }));
+            }}
+            dropdownWidth="w-48"
+          />
 
           {/* Month Selector */}
           {filterOptions.months && filterOptions.months.length > 0 && (
@@ -168,7 +203,7 @@ export function GlobalFilterBar({
             allOptionLabel="All Units"
             allOptionValue="ALL"
             value={filters.unitCode || "ALL"}
-            options={filterOptions.units.map(u => ({
+            options={filteredUnits.map(u => ({
               label: u.label,
               value: u.value
             }))}

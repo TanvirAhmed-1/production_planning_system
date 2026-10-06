@@ -151,10 +151,10 @@ export function ProductionCharts({
             <div>
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                Daily Efficiency Trend (%)
+                Daily Efficiency Trend (Planned vs Actual %)
               </CardTitle>
               <CardDescription className="text-xs">
-                Actual factory efficiency curve with 80% benchmark target
+                Comparison of Planned (Production) Efficiency vs Floor Actual Efficiency
               </CardDescription>
             </div>
             <Badge variant="success" className="text-[11px] font-medium">
@@ -164,11 +164,11 @@ export function ProductionCharts({
           <CardContent>
             <div className="h-72 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={efficiencyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={efficiencyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="effGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                    <linearGradient id="actEffGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} opacity={0.7} />
@@ -176,9 +176,10 @@ export function ProductionCharts({
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} tickLine={false} tickFormatter={(v) => `${v}%`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="4 4" label={{ value: '80% Target', position: 'insideTopRight', fill: '#ef4444', fontSize: 10 }} />
-                  <Area type="monotone" dataKey="efficiency" name="Efficiency %" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#effGradient)" />
-                </AreaChart>
+                  <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="4 4" label={{ value: '80% Benchmark', position: 'insideTopRight', fill: '#ef4444', fontSize: 10 }} />
+                  <Area type="monotone" dataKey="actualEfficiency" name="Actual Eff %" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#actEffGradient)" />
+                  <Line type="monotone" dataKey="plannedEfficiency" name="Plan (Prod) Eff %" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>

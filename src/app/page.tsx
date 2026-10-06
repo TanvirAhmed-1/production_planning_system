@@ -37,10 +37,17 @@ import {
   Sliders,
   Trash2,
   Eye,
+  Layers,
+  Activity,
+  Link2,
+  CornerDownRight,
+  CheckCircle2,
+  GitBranch,
 } from "lucide-react";
 
 const initialFilters: FilterState = {
   batchId: "ALL",
+  cluster: "ALL",
   month: "ALL",
   unitCode: "ALL",
   lineName: "ALL",
@@ -65,19 +72,30 @@ export default function DashboardPage() {
 
   // Filter Dropdown Options
   const [filterOptions, setFilterOptions] = useState<{
-    units: { label: string; value: string }[];
-    lines: { label: string; value: string; unit: string }[];
+    clusters?: { label: string; value: string }[];
+    units: { label: string; value: string; cluster?: string }[];
+    lines: { label: string; value: string; unit: string; cluster?: string }[];
     buyers: { label: string; value: string }[];
     seasons: { label: string; value: string }[];
     months: { label: string; value: string }[];
-    batches: { label: string; value: string; month?: string; fileName?: string }[];
+    batches: { label: string; value: string; month?: string; fileName?: string; batchType?: string }[];
+    planBatches?: { label: string; value: string; month?: string; fileName?: string }[];
+    actualBatches?: { label: string; value: string; month?: string; fileName?: string }[];
   }>({
+    clusters: [
+      { label: "All Clusters", value: "ALL" },
+      { label: "B1 Cluster", value: "B1" },
+      { label: "B2 Cluster", value: "B2" },
+      { label: "Styrax Cluster", value: "Styrax" }
+    ],
     units: [],
     lines: [],
     buyers: [],
     seasons: [],
     months: [{ label: "October 2026", value: "2026-10" }],
     batches: [],
+    planBatches: [],
+    actualBatches: [],
   });
 
   // Data Loading State
@@ -93,6 +111,8 @@ export default function DashboardPage() {
     isOpen: boolean;
     batchId: string;
     fileName: string;
+    title?: string;
+    description?: string;
   }>({
     isOpen: false,
     batchId: "",
@@ -124,6 +144,7 @@ export default function DashboardPage() {
     try {
       const params = new URLSearchParams();
       if (currentFilters.batchId && currentFilters.batchId !== "ALL") params.append("batchId", currentFilters.batchId);
+      if (currentFilters.cluster && currentFilters.cluster !== "ALL") params.append("cluster", currentFilters.cluster);
       if (currentFilters.month && currentFilters.month !== "ALL") {
         params.append("month", currentFilters.month);
       } else if (monthVal && (!currentFilters.batchId || currentFilters.batchId === "ALL")) {
@@ -167,11 +188,34 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const promptDeleteBatch = (batchId: string, fileName: string) => {
+  const promptDeleteBatch = (
+    batchId: string,
+    fileName: string,
+    batchType?: string,
+    childCount: number = 0,
+    parentPlanName?: string
+  ) => {
+    let title = "Delete Import Batch";
+    let description = "This action cannot be undone. All associated records will be permanently deleted.";
+
+    if (batchType === "ACTUAL") {
+      title = "Delete Actual Floor Data Batch";
+      description = `This will delete actual production floor records from "${fileName}". The parent plan "${parentPlanName || 'Plan'}" will remain intact, and its daily target metrics will reset to 0 actual output.`;
+    } else {
+      title = "Delete Production Plan (Parent)";
+      if (childCount > 0) {
+        description = `⚠️ Warning: This is a Parent Production Plan with ${childCount} linked Actual Production batch(es). Deleting this plan will CASCADE DELETE this plan AND all its linked actual floor data files!`;
+      } else {
+        description = `This will delete this base production plan, along with all its orders, line allocations, and daily targets.`;
+      }
+    }
+
     setDeleteModalState({
       isOpen: true,
       batchId,
       fileName,
+      title,
+      description,
     });
   };
 
@@ -183,9 +227,14 @@ export default function DashboardPage() {
         if (filters.batchId === deleteModalState.batchId) {
           setFilters(prev => ({ ...prev, batchId: "ALL" }));
         }
-        fetchImportHistory();
-        fetchFilterOptions();
-        fetchDashboardData({ ...filters, batchId: "ALL" }, selectedMonth);
+        await Promise.all([
+          fetchImportHistory(),
+          fetchFilterOptions(),
+          fetchDashboardData({ ...filters, batchId: "ALL" }, selectedMonth)
+        ]);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.error("Delete failed:", errJson);
       }
     } catch (err) {
       console.error("Failed to delete batch", err);
@@ -880,11 +929,12 @@ export default function DashboardPage() {
                           <table className="w-full text-left text-sm whitespace-nowrap">
                             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 uppercase">
                               <tr>
-                                <th className="px-4 py-3 whitespace-nowrap">File Name</th>
+                                <th className="px-4 py-3 whitespace-nowrap">File & Hierarchy</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Type & Link</th>
                                 <th className="px-4 py-3 whitespace-nowrap">Month</th>
                                 <th className="px-4 py-3 whitespace-nowrap">Status</th>
                                 <th className="px-4 py-3 whitespace-nowrap">Imported Rows</th>
-                                <th className="px-4 py-3 whitespace-nowrap">Daily Records</th>
+                                <th className="px-4 py-3 whitespace-nowrap">Attached Data</th>
                                 <th className="px-4 py-3 whitespace-nowrap">Uploaded At</th>
                                 <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                               </tr>
@@ -892,20 +942,93 @@ export default function DashboardPage() {
                             <tbody className="divide-y divide-slate-100">
                               {importHistory.map((h: any) => {
                                 const isActive = filters.batchId === h.id;
+                                const isActual = h.batchType === "ACTUAL";
+                                const actualBatchesCount = h.actualBatches?.length || 0;
+
                                 return (
-                                  <tr key={h.id} className={`hover:bg-slate-50/50 ${isActive ? "bg-indigo-50/40" : ""}`}>
-                                    <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">
-                                      <div className="flex items-center gap-2">
-                                        <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
-                                        <span className="truncate max-w-[240px]" title={h.fileName}>{h.fileName}</span>
-                                        {isActive && (
-                                          <Badge className="bg-indigo-600 text-white text-[10px] py-0 px-1.5 font-semibold">
-                                            Active View
-                                          </Badge>
+                                  <tr
+                                    key={h.id}
+                                    className={`hover:bg-slate-50/70 transition-colors ${
+                                      isActive
+                                        ? "bg-indigo-50/50"
+                                        : isActual
+                                        ? "bg-emerald-50/20"
+                                        : ""
+                                    }`}
+                                  >
+                                    {/* File Name & Hierarchy Tree */}
+                                    <td className="px-4 py-3 font-medium text-slate-900">
+                                      <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                          {isActual ? (
+                                            <div className="flex items-center gap-1.5 pl-2 border-l-2 border-emerald-400">
+                                              <Activity className="h-4 w-4 text-emerald-600 shrink-0" />
+                                              <span className="font-bold text-slate-900 truncate max-w-[280px]" title={h.fileName}>
+                                                {h.fileName}
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-2">
+                                              <FileSpreadsheet className="h-4 w-4 text-indigo-600 shrink-0" />
+                                              <span className="font-bold text-slate-900 truncate max-w-[280px]" title={h.fileName}>
+                                                {h.fileName}
+                                              </span>
+                                            </div>
+                                          )}
+
+                                          {isActive && (
+                                            <Badge className="bg-indigo-600 text-white text-[10px] py-0 px-1.5 font-semibold">
+                                              Active View
+                                            </Badge>
+                                          )}
+                                        </div>
+
+                                        {/* Child Link to Parent / Parent Linked Actuals Subtext */}
+                                        {isActual && (
+                                          <div className="flex items-center gap-1.5 pl-2 text-[11px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/70 w-fit">
+                                            <CornerDownRight className="h-3 w-3 text-emerald-600 shrink-0" />
+                                            <span className="font-semibold">Actual Floor Output of:</span>
+                                            <span className="font-medium text-emerald-950 truncate max-w-[260px]">
+                                              {h.parentPlan?.fileName || "Production Plan"}
+                                            </span>
+                                          </div>
+                                        )}
+
+                                        {!isActual && actualBatchesCount > 0 && (
+                                          <div className="flex items-center gap-1.5 text-[11px] text-indigo-800 bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200/70 w-fit">
+                                            <GitBranch className="h-3 w-3 text-indigo-600 shrink-0" />
+                                            <span className="font-semibold">{actualBatchesCount} Actual Upload(s) Attached:</span>
+                                            <span className="text-slate-600 truncate max-w-[240px]">
+                                              {h.actualBatches.map((b: any) => b.fileName).join(", ")}
+                                            </span>
+                                          </div>
+                                        )}
+
+                                        {!isActual && actualBatchesCount === 0 && (
+                                          <span className="text-[11px] text-slate-400 italic">
+                                            Awaiting actual floor output upload
+                                          </span>
                                         )}
                                       </div>
                                     </td>
+
+                                    {/* Type & Link Column */}
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      {isActual ? (
+                                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-semibold gap-1 text-xs">
+                                          <Activity className="h-3 w-3" />
+                                          ACTUAL (Child)
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 font-semibold gap-1 text-xs">
+                                          <Layers className="h-3 w-3" />
+                                          PLAN (Parent)
+                                        </Badge>
+                                      )}
+                                    </td>
+
                                     <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{h.month}</td>
+                                    
                                     <td className="px-4 py-3 whitespace-nowrap">
                                       <Badge
                                         variant={h.status === "SUCCESS" || h.status === "COMPLETED" ? "default" : "destructive"}
@@ -914,22 +1037,38 @@ export default function DashboardPage() {
                                         {h.status}
                                       </Badge>
                                     </td>
+
                                     <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
-                                      {h.importedRows || h.rowCount || 0}
+                                      {h.importedRows || h.rowCount || 0} rows
                                     </td>
-                                    <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
-                                      {h.dailyRecordsCreated || (h.summary ? JSON.parse(h.summary)?.dailyRecords : "-")}
+
+                                    <td className="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">
+                                      {isActual ? (
+                                        <span className="font-medium text-emerald-700">
+                                          {h._count?.actualRecords || h.importedRows || 0} floor records
+                                        </span>
+                                      ) : (
+                                        <span className="font-medium text-indigo-700">
+                                          {h._count?.orders || (h.summary ? JSON.parse(h.summary)?.orders : "-")} orders
+                                        </span>
+                                      )}
                                     </td>
+
                                     <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
                                       {new Date(h.createdAt).toLocaleString()}
                                     </td>
+
                                     <td className="px-4 py-3 text-right whitespace-nowrap">
                                       <div className="flex items-center justify-end gap-2">
                                         <Button
                                           variant={isActive ? "default" : "outline"}
                                           size="sm"
                                           onClick={() => handleSelectBatch(h.id, h.month)}
-                                          className={`h-7 text-xs gap-1 ${isActive ? "bg-indigo-600 text-white" : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"}`}
+                                          className={`h-7 text-xs gap-1 ${
+                                            isActive
+                                              ? "bg-indigo-600 text-white"
+                                              : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                          }`}
                                         >
                                           <Eye className="h-3.5 w-3.5" />
                                           {isActive ? "Active View" : "View Dashboard"}
@@ -938,7 +1077,15 @@ export default function DashboardPage() {
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          onClick={() => promptDeleteBatch(h.id, h.fileName)}
+                                          onClick={() =>
+                                            promptDeleteBatch(
+                                              h.id,
+                                              h.fileName,
+                                              h.batchType,
+                                              actualBatchesCount,
+                                              h.parentPlan?.fileName
+                                            )
+                                          }
                                           className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                                           title="Delete Batch & Records"
                                         >
@@ -1050,7 +1197,7 @@ export default function DashboardPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={(result) => {
-          const newBatchId = result?.batchId;
+          const newBatchId = result?.planBatchId || result?.batchId;
           const newMonth = result?.verification?.month;
           if (newBatchId) {
             setFilters(prev => ({
@@ -1065,8 +1212,8 @@ export default function DashboardPage() {
             fetchFilterOptions(newBatchId);
           } else {
             fetchFilterOptions(filters.batchId, filters.unitCode);
-            fetchDashboardData(filters, selectedMonth);
           }
+          fetchDashboardData(filters, selectedMonth);
           fetchImportHistory();
         }}
       />
@@ -1081,8 +1228,9 @@ export default function DashboardPage() {
         isOpen={deleteModalState.isOpen}
         onClose={() => setDeleteModalState(prev => ({ ...prev, isOpen: false }))}
         onConfirm={confirmDeleteBatch}
-        title="Delete Excel Import Batch"
+        title={deleteModalState.title || "Delete Excel Import Batch"}
         fileName={deleteModalState.fileName}
+        description={deleteModalState.description}
       />
     </div>
   );

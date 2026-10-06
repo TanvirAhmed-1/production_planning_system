@@ -1,8 +1,10 @@
 import prisma from '@/lib/prisma';
+import { normalizeLineAlias } from '@/lib/actual-importer';
 
 export interface FilterParams {
   month?: string;
   batchId?: string;
+  cluster?: string;
   startDate?: string;
   endDate?: string;
   unitCode?: string;
@@ -19,6 +21,10 @@ export function buildWhereClause(filters: FilterParams, isLineSummary: boolean =
 
   if (filters.batchId && filters.batchId !== 'ALL') {
     where.importBatchId = filters.batchId;
+  }
+
+  if (filters.cluster && filters.cluster !== 'ALL') {
+    where.cluster = filters.cluster;
   }
 
   if (filters.month && filters.month !== 'ALL') {
@@ -256,6 +262,7 @@ export async function getDashboardData(filters: FilterParams = {}) {
       actualSah: Number(actSah.toFixed(1)),
       clockHours: Number(clkHrs.toFixed(1)),
       plannedEfficiency: plannedEff,
+      actualEfficiency: actualEff,
       efficiency: eff,
       achievementRate: target > 0 ? Number(((actual / target) * 100).toFixed(1)) : 0
     };
@@ -402,8 +409,15 @@ export async function getDashboardData(filters: FilterParams = {}) {
 }
 
 export async function getLineDetails(lineName: string) {
+  const lineAliases = normalizeLineAlias(lineName);
+
   const line = await prisma.productionLine.findFirst({
-    where: { name: lineName },
+    where: {
+      OR: [
+        { name: lineName },
+        { name: { in: lineAliases } }
+      ]
+    },
     include: {
       unit: true,
       orders: {
@@ -425,9 +439,53 @@ export async function getLineDetails(lineName: string) {
 
   // Fetch line-level daily summary records (orderId == null)
   const lineDailySummaries = await prisma.productionDaily.findMany({
-    where: { lineId: line.id, orderId: null },
+    where: {
+      OR: [
+        { lineId: line.id },
+        { line: { name: { in: [line.name, ...lineAliases] } } }
+      ]
+    },
     orderBy: { dateString: 'asc' }
   });
+
+  // Fetch raw floor actual records for this line
+  const actualFloorRecords = await prisma.productionActualRecord.findMany({
+    where: {
+      OR: [
+        { lineId: line.id },
+        { lineName: line.name },
+        { lineName: { in: lineAliases } }
+      ]
+    },
+    orderBy: { date: 'asc' }
+  });
+
+  const actualByDateMap = new Map<string, {
+    pcs: number;
+    sah: number;
+    clockHours: number;
+    records: any[];
+  }>();
+
+  for (const ar of actualFloorRecords) {
+    const dStr = ar.dateString;
+    const existing = actualByDateMap.get(dStr) || { pcs: 0, sah: 0, clockHours: 0, records: [] };
+    existing.pcs += ar.actualPcs || 0;
+    existing.sah += ar.actualSah || 0;
+    existing.clockHours = Math.max(existing.clockHours, ar.clockHours || 0);
+    existing.records.push({
+      style: ar.style,
+      buyer: ar.buyerName,
+      oc: ar.oc,
+      actualPcs: ar.actualPcs,
+      effPercent: ar.effPercent,
+      smv: ar.smv,
+      actualSah: ar.actualSah,
+      clockHours: ar.clockHours,
+      manpower: ar.manpower
+    });
+    actualByDateMap.set(dStr, existing);
+  }
 
   // Also parse summaryJson as reference
   let parsedSummary: any = null;
@@ -460,6 +518,7 @@ export async function getLineDetails(lineName: string) {
       color: ord.color,
       orderQty: ord.orderQty,
       planQty: ord.planQty,
+      actualQty: ord.actualQty,
       smv: ord.smv,
       mainCategory: ord.mainCategory,
       subCategory: ord.subCategory,
@@ -477,17 +536,20 @@ export async function getLineDetails(lineName: string) {
     };
   });
 
-  // Extract all distinct dates across daily summaries or orders
+  // Extract all distinct dates across daily summaries, orders, or actual floor records
   const dateSet = new Set<string>();
   lineDailySummaries.forEach(d => dateSet.add(d.dateString));
   orders.forEach(o => Object.keys(o.dailyPlan).forEach(d => dateSet.add(d)));
+  actualFloorRecords.forEach(a => dateSet.add(a.dateString));
   const dateColumns = Array.from(dateSet).sort();
 
   // Build daily breakdown
   const dailyBreakdown = dateColumns.map(dateStr => {
-    const summaryRecord = lineDailySummaries.find(d => d.dateString === dateStr);
+    const summaryRecord = lineDailySummaries.find(d => d.dateString === dateStr && d.orderId === null) ||
+                          lineDailySummaries.find(d => d.dateString === dateStr);
+    const floorActual = actualByDateMap.get(dateStr);
     
-    // Find all styles running on this date
+    // Find all styles running on this date from plan
     const runningStyles = orders
       .filter(o => o.dailyPlan[dateStr] && o.dailyPlan[dateStr] > 0)
       .map(o => ({
@@ -502,7 +564,7 @@ export async function getLineDetails(lineName: string) {
     const styleSumPlan = runningStyles.reduce((acc, s) => acc + s.planQty, 0);
     const targetQty = summaryRecord?.targetQty || styleSumPlan;
     const targetSah = summaryRecord ? Number((summaryRecord.targetSah || 0).toFixed(2)) : Number(((styleSumPlan * (orders[0]?.smv || 2.5)) / 60).toFixed(2));
-    const clockHours = summaryRecord ? Number((summaryRecord.clockHours || 0).toFixed(2)) : Number(((line.manpower || 25) * 10).toFixed(2));
+    const clockHours = floorActual?.clockHours || (summaryRecord ? Number((summaryRecord.clockHours || 0).toFixed(2)) : Number(((line.manpower || 25) * 10).toFixed(2)));
     
     let plannedEff = clockHours > 0 ? Math.round((targetSah / clockHours) * 100) : 0;
     const summaryEffVal = parsedSummary?.EFFI?.daily?.[dateStr];
@@ -512,47 +574,61 @@ export async function getLineDetails(lineName: string) {
       plannedEff = Math.round(summaryRecord.plannedEfficiency);
     }
 
-    const actualQty = summaryRecord?.actualQty || 0;
-    const actualSah = summaryRecord?.actualSah || 0;
-    const actualEff = clockHours > 0 && actualSah > 0 ? Math.round((actualSah / clockHours) * 100) : 0;
+    const actualQty = floorActual?.pcs || summaryRecord?.actualQty || 0;
+    const actualSah = floorActual?.sah || summaryRecord?.actualSah || 0;
+    const actualEff = clockHours > 0 && actualSah > 0 ? Number(((actualSah / clockHours) * 100).toFixed(1)) : 0;
+    const gap = targetQty - actualQty;
+    const achievementRate = targetQty > 0 ? Number(((actualQty / targetQty) * 100).toFixed(1)) : (actualQty > 0 ? 100 : 0);
 
     return {
       date: dateStr,
       dayOfWeek: new Date(dateStr + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
       targetQty,
       actualQty,
-      gap: targetQty - actualQty,
+      gap,
+      achievementRate,
       targetSah,
-      actualSah,
-      clockHours,
-      machineHours: clockHours,
+      actualSah: Number(actualSah.toFixed(1)),
+      clockHours: Number(clockHours.toFixed(1)),
+      machineHours: Number(clockHours.toFixed(1)),
       plannedEfficiency: plannedEff,
-      efficiency: actualSah > 0 ? actualEff : plannedEff,
+      actualEfficiency: actualEff,
+      efficiency: actualQty > 0 && actualEff > 0 ? actualEff : plannedEff,
       stylesCount: runningStyles.length,
-      runningStyles
+      runningStyles,
+      floorActualRecords: floorActual?.records || []
     };
   });
 
   // Calculate Line Totals
   const totalPlannedProduction = dailyBreakdown.reduce((acc, d) => acc + d.targetQty, 0) || orders.reduce((acc, o) => acc + o.planQty, 0);
+  const totalActualProduction = dailyBreakdown.reduce((acc, d) => acc + d.actualQty, 0);
   const totalOrderQty = orders.reduce((acc, o) => acc + o.orderQty, 0);
   const totalTargetSah = Number(dailyBreakdown.reduce((acc, d) => acc + d.targetSah, 0).toFixed(1));
+  const totalActualSah = Number(dailyBreakdown.reduce((acc, d) => acc + d.actualSah, 0).toFixed(1));
   const totalClockHours = Number(dailyBreakdown.reduce((acc, d) => acc + d.clockHours, 0).toFixed(1));
   
-  let overallEfficiency = totalClockHours > 0 ? Math.round((totalTargetSah / totalClockHours) * 100) : 0;
+  let overallPlannedEfficiency = totalClockHours > 0 ? Number(((totalTargetSah / totalClockHours) * 100).toFixed(1)) : 0;
   if (parsedSummary?.EFFI?.total !== null && parsedSummary?.EFFI?.total !== undefined) {
     const rawTotal = parsedSummary.EFFI.total;
-    overallEfficiency = rawTotal <= 1.0 ? Math.round(rawTotal * 100) : Math.round(rawTotal);
+    overallPlannedEfficiency = rawTotal <= 1.0 ? Math.round(rawTotal * 100) : Math.round(rawTotal);
   }
+
+  const overallActualEfficiency = totalClockHours > 0 && totalActualSah > 0 ? Number(((totalActualSah / totalClockHours) * 100).toFixed(1)) : 0;
+  const overallAchievementRate = totalPlannedProduction > 0 ? Number(((totalActualProduction / totalPlannedProduction) * 100).toFixed(1)) : 0;
   
-  const workingDays = dailyBreakdown.filter(d => d.targetQty > 0 || d.clockHours > 0);
+  const workingDays = dailyBreakdown.filter(d => d.targetQty > 0 || d.actualQty > 0 || d.clockHours > 0);
   const workingDaysCount = workingDays.length;
   const averageDailyPlan = workingDaysCount > 0 ? Math.round(totalPlannedProduction / workingDaysCount) : 0;
+  const averageDailyActual = workingDaysCount > 0 ? Math.round(totalActualProduction / workingDaysCount) : 0;
 
-  const activeEffList = workingDays.map(d => d.plannedEfficiency).filter(e => e > 0);
-  const minEff = activeEffList.length > 0 ? Math.min(...activeEffList) : 0;
-  const maxEff = activeEffList.length > 0 ? Math.max(...activeEffList) : 0;
-  const avgEff = activeEffList.length > 0 ? Math.round(activeEffList.reduce((a, b) => a + b, 0) / activeEffList.length) : overallEfficiency;
+  const activePlanEffList = workingDays.map(d => d.plannedEfficiency).filter(e => e > 0);
+  const minPlanEff = activePlanEffList.length > 0 ? Math.min(...activePlanEffList) : 0;
+  const maxPlanEff = activePlanEffList.length > 0 ? Math.max(...activePlanEffList) : 0;
+  const avgPlanEff = activePlanEffList.length > 0 ? Math.round(activePlanEffList.reduce((a, b) => a + b, 0) / activePlanEffList.length) : overallPlannedEfficiency;
+
+  const activeActualEffList = workingDays.map(d => d.actualEfficiency).filter(e => e > 0);
+  const avgActualEff = activeActualEffList.length > 0 ? Number((activeActualEffList.reduce((a, b) => a + b, 0) / activeActualEffList.length).toFixed(1)) : overallActualEfficiency;
 
   return {
     line: {
@@ -560,33 +636,40 @@ export async function getLineDetails(lineName: string) {
       name: line.name,
       unitCode: line.unitCode,
       unitName: line.unit?.name || `Unit ${line.unitCode}`,
+      cluster: line.cluster || 'B1',
       manpower: line.manpower || 25,
       workingHours: line.workingHours || 10.0,
       status: line.status || 'ACTIVE'
     },
     kpis: {
       totalPlannedProduction,
+      totalActualProduction,
       totalOrderQty,
       totalTargetSah,
+      totalActualSah,
       totalClockHours,
       totalMachineHours: totalClockHours,
-      overallEfficiency,
-      plannedEfficiency: overallEfficiency,
-      effiPlanD: overallEfficiency,
-      minEfficiency: minEff,
-      maxEfficiency: maxEff,
-      avgEfficiency: avgEff,
-      actualProduction: 0,
-      actualSah: 0,
-      actualEfficiency: 0,
+      totalGap: totalPlannedProduction - totalActualProduction,
+      achievementRate: overallAchievementRate,
+      overallEfficiency: totalActualSah > 0 ? overallActualEfficiency : overallPlannedEfficiency,
+      plannedEfficiency: overallPlannedEfficiency,
+      actualEfficiency: overallActualEfficiency,
+      effiPlanD: overallPlannedEfficiency,
+      minEfficiency: minPlanEff,
+      maxEfficiency: maxPlanEff,
+      avgEfficiency: avgPlanEff,
+      avgActualEfficiency: avgActualEff,
+      actualProduction: totalActualProduction,
       manpower: line.manpower || 25,
       ordersCount: orders.length,
       workingDaysCount,
       averageDailyPlan,
-      status: overallEfficiency >= 80 ? 'HIGH' : overallEfficiency >= 70 ? 'NORMAL' : overallEfficiency >= 60 ? 'NEEDS_ATTENTION' : 'LOW'
+      averageDailyActual,
+      status: (overallActualEfficiency > 0 ? overallActualEfficiency : overallPlannedEfficiency) >= 80 ? 'HIGH' : (overallActualEfficiency > 0 ? overallActualEfficiency : overallPlannedEfficiency) >= 70 ? 'NORMAL' : 'NEEDS_ATTENTION'
     },
     dailyBreakdown,
     orders,
+    actualFloorRecords,
     dateColumns,
     allLines,
     summaryJson: parsedSummary
@@ -600,7 +683,7 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
   const [batches, rawUnits, rawLines, rawBuyers, rawSeasons, rawMonths] = await Promise.all([
     // Batches list for file filter
     prisma.importBatch.findMany({
-      select: { id: true, fileName: true, month: true, totalRows: true, createdAt: true },
+      select: { id: true, fileName: true, month: true, totalRows: true, batchType: true, planBatchId: true, createdAt: true },
       orderBy: { createdAt: 'desc' }
     }),
     // Units list: if batchId is provided, get units active in that batch
@@ -613,13 +696,12 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
           const codes = batchUnits.map(u => u.unitCode).filter(Boolean);
           return prisma.unit.findMany({
             where: { code: { in: codes } },
-            select: { code: true, name: true },
+            select: { code: true, name: true, cluster: true },
             orderBy: { code: 'asc' }
           });
         })
       : prisma.unit.findMany({
-          where: { totalLines: { gt: 0 } },
-          select: { code: true, name: true },
+          select: { code: true, name: true, cluster: true },
           orderBy: { code: 'asc' }
         }),
     // Lines list: if batchId or unitCode provided, get lines active in that batch / unit
@@ -639,7 +721,7 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
         )
       : prisma.productionLine.findMany({
           where: effectiveUnitCode ? { unitCode: effectiveUnitCode } : undefined,
-          select: { name: true, unitCode: true },
+          select: { name: true, unitCode: true, cluster: true },
           orderBy: { name: 'asc' }
         }),
     // Buyers list: filtered by batch if provided
@@ -677,13 +759,37 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
     })
   ]);
 
+  const clusters = [
+    { label: 'All Clusters', value: 'ALL' },
+    { label: 'B1 Cluster', value: 'B1' },
+    { label: 'B2 Cluster', value: 'B2' },
+    { label: 'Styrax Cluster', value: 'Styrax' }
+  ];
+
+  const planBatches = batches.filter(b => b.batchType !== 'ACTUAL');
+  const actualBatches = batches.filter(b => b.batchType === 'ACTUAL');
+
   return {
-    units: rawUnits.map(u => ({ label: `${u.code} (${u.name})`, value: u.code })),
-    lines: rawLines.map(l => ({ label: l.name, value: l.name, unit: l.unitCode })),
+    clusters,
+    units: rawUnits.map(u => ({ label: `${u.code} (${u.name})`, value: u.code, cluster: (u as any).cluster })),
+    lines: rawLines.map(l => ({ label: l.name, value: l.name, unit: l.unitCode, cluster: (l as any).cluster })),
     buyers: rawBuyers.map(b => ({ label: b.name, value: b.name })),
     seasons: rawSeasons.map(s => ({ label: s.season!, value: s.season! })),
     months: rawMonths.map(m => ({ label: m.month, value: m.month })),
     batches: batches.map(b => ({
+      label: `${b.fileName} (${b.month})${b.batchType === 'ACTUAL' ? ' [ACTUAL]' : ' [PLAN]'}`,
+      value: b.id,
+      month: b.month,
+      fileName: b.fileName,
+      batchType: b.batchType
+    })),
+    planBatches: planBatches.map(b => ({
+      label: `${b.fileName} (${b.month})`,
+      value: b.id,
+      month: b.month,
+      fileName: b.fileName
+    })),
+    actualBatches: actualBatches.map(b => ({
       label: `${b.fileName} (${b.month})`,
       value: b.id,
       month: b.month,
