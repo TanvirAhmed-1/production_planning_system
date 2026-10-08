@@ -88,13 +88,12 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (!token) {
-      // Return Super Admin by default if running in development mode without session
-      return await ensureSuperAdminExists();
+      return null;
     }
 
     const parsed = parseSessionToken(token);
     if (!parsed) {
-      return await ensureSuperAdminExists();
+      return null;
     }
 
     const user = await prisma.user.findUnique({
@@ -115,6 +114,6 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       phone: user.phone
     };
   } catch {
-    return await ensureSuperAdminExists();
+    return null;
   }
 }

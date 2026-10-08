@@ -7,10 +7,7 @@ import {
   Download,
   Upload,
   RefreshCw,
-  AlertTriangle,
-  FileSpreadsheet,
   Settings,
-  Layers,
   Calendar,
   LogOut,
   ShieldAlert,
@@ -47,6 +44,26 @@ export function Header({
   monthOptions = []
 }: HeaderProps) {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = React.useState<{ name: string; role: string } | null>(null);
+
+  React.useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => {
+        if (!res.ok) {
+          router.push('/login');
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data?.user) {
+          setCurrentUser(data.user);
+        } else if (data && !data.success) {
+          router.push('/login');
+        }
+      })
+      .catch(() => {});
+  }, [router]);
 
   const handleLogout = async () => {
     try {
@@ -169,12 +186,19 @@ export function Header({
           <Settings className="h-4 w-4" />
         </button>
 
-        {/* Super Admin Status & Logout */}
+        {/* User Role Status & Logout */}
         <div className="flex items-center gap-1 sm:gap-1.5 pl-1 sm:pl-1.5 border-l border-slate-200 dark:border-slate-800">
-          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 font-bold text-[10px] hidden md:inline-flex items-center gap-1 py-1">
-            <ShieldAlert className="h-3 w-3 text-purple-600" />
-            Super Admin
-          </Badge>
+          {currentUser?.role === 'SUPER_ADMIN' ? (
+            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 font-bold text-[10px] hidden md:inline-flex items-center gap-1 py-1">
+              <ShieldAlert className="h-3 w-3 text-purple-600" />
+              {currentUser.name || 'Super Admin'}
+            </Badge>
+          ) : currentUser ? (
+            <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-200 font-bold text-[10px] hidden md:inline-flex items-center gap-1 py-1">
+              <UserCheck className="h-3 w-3 text-sky-600" />
+              {currentUser.name || currentUser.role}
+            </Badge>
+          ) : null}
 
           <Button
             variant="ghost"
