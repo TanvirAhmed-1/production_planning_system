@@ -9,7 +9,6 @@ export async function GET(req: NextRequest) {
     const filters = await getFilterOptions(batchId, unitCode);
     return NextResponse.json(filters);
   } catch (err: any) {
-    console.error('Filters API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to fetch filters' }, { status: 500 });
   }
 }

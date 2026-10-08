@@ -3,18 +3,20 @@
 import React, { useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { ExcelMasterSheet } from "@/components/dashboard/excel-master-sheet";
-import { SignoffPlanSummary } from "@/components/dashboard/signoff-plan-summary";
-import { UnitLineEditor } from "@/components/dashboard/unit-line-editor";
-import { ExcelImportModal } from "@/components/modals/excel-import-modal";
-import { SettingsModal } from "@/components/modals/settings-modal";
+import { ExcelMasterSheet } from "@/components/ui/dashboard/excel-master-sheet";
+import { SignoffPlanSummary } from "@/components/ui/dashboard/signoff-plan-summary";
+import { UnitLineEditor } from "@/components/ui/dashboard/unit-line-editor";
+import { ExcelImportModal } from "@/components/ui/modals/excel-import-modal";
+import { SettingsModal } from "@/components/ui/modals/settings-modal";
 import { FileSpreadsheet, ShieldCheck, Sliders } from "lucide-react";
 
 export default function ExcelViewPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [selectedSheet, setSelectedSheet] = useState<"matrix" | "summary" | "editor">("summary");
+  const [selectedSheet, setSelectedSheet] = useState<
+    "matrix" | "summary" | "editor"
+  >("summary");
 
   return (
     <div className="flex h-screen bg-slate-100 dark:bg-slate-950 overflow-hidden">

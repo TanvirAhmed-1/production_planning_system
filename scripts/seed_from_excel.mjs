@@ -138,9 +138,6 @@ function getSubtotalType(row) {
 // ===== MAIN SEED FUNCTION =====
 
 async function seed() {
-  console.log('╔══════════════════════════════════════════════════════════╗');
-  console.log('║  Birichina Production Plan — Precision Excel Importer   ║');
-  console.log('╚══════════════════════════════════════════════════════════╝');
   
   const filePath = path.resolve('Birichina- Month of October Sign off Production Plan- 26th October.xlsx');
   const workbook = XLSX.readFile(filePath);
@@ -149,7 +146,6 @@ async function seed() {
   
   const headerRow = allRows[0];
   const dataRows = allRows.slice(1);
-  console.log(`\n📊 Loaded sheet: ${allRows.length} total rows (${dataRows.length} data rows)`);
   
   // ===== 1. PARSE DATE COLUMNS =====
   const dateColumns = [];
@@ -166,7 +162,6 @@ async function seed() {
       });
     }
   }
-  console.log(`📅 Identified ${dateColumns.length} daily date columns (${dateColumns[0]?.dateStr} to ${dateColumns[dateColumns.length - 1]?.dateStr})`);
   
   // ===== 2. CLASSIFY EVERY ROW =====
   const orderItemRows = [];
@@ -201,11 +196,6 @@ async function seed() {
     }
   }
   
-  console.log(`\n📋 Row Classification:`);
-  console.log(`   ✅ Order item rows: ${orderItemRows.length}`);
-  console.log(`   📊 Lines with subtotals: ${Object.keys(lineSubtotals).length}`);
-  console.log(`   ⏭️  Skipped rows: ${skippedRows}`);
-  console.log(`   ⬜ Empty rows: ${emptyRows}`);
   
   // Verify subtotal completeness
   let completeSubtotals = 0;
@@ -220,13 +210,10 @@ async function seed() {
       if (!st.SAH) missing.push('SAH');
       if (!st.CLOCK_HOURS) missing.push('CLOCK_HOURS');
       if (!st.EFFICIENCY) missing.push('EFFICIENCY');
-      console.log(`   ⚠️  ${ln}: missing ${missing.join(', ')}`);
     }
   }
-  console.log(`   Complete subtotals: ${completeSubtotals}/${Object.keys(lineSubtotals).length}`);
   
   // ===== 3. CLEAR DATABASE =====
-  console.log('\n🗑️  Clearing existing database tables...');
   await prisma.productionDaily.deleteMany();
   await prisma.order.deleteMany();
   await prisma.productionLine.deleteMany();
@@ -282,7 +269,6 @@ async function seed() {
     }
   }
   
-  console.log(`\n🏭 Lines: ${lineDefMap.size} | 👥 Buyers: ${buyerDefMap.size}`);
   
   // Verify line counts per unit
   const unitLineCounts = {};
@@ -290,8 +276,6 @@ async function seed() {
     if (!unitLineCounts[def.unitCode]) unitLineCounts[def.unitCode] = 0;
     unitLineCounts[def.unitCode]++;
   }
-  console.log('   Lines per unit:', JSON.stringify(unitLineCounts));
-  console.log('   Buyers:', [...buyerDefMap.keys()].join(', '));
   
   await prisma.productionLine.createMany({ data: Array.from(lineDefMap.values()) });
   await prisma.buyer.createMany({ data: Array.from(buyerDefMap.values()) });
@@ -370,9 +354,6 @@ async function seed() {
     });
   }
   
-  console.log(`\n📦 Orders to insert: ${ordersToInsert.length}`);
-  console.log(`   Total ODR QTY: ${totalOdrQty.toLocaleString()}`);
-  console.log(`   Total Plan QTY: ${totalPlanQty.toLocaleString()}`);
   
   // ===== 8. CREATE DAILY PRODUCTION RECORDS (from subtotal rows) =====
   // For each line, use its PLAN subtotal row for daily targets
@@ -458,28 +439,21 @@ async function seed() {
     }
   }
   
-  console.log(`📊 Daily records to insert: ${dailyRecordsToInsert.length}`);
   
   // Verify daily target sum
   const dailyTargetSum = dailyRecordsToInsert.reduce((s, r) => s + r.targetQty, 0);
-  console.log(`   Daily target sum: ${dailyTargetSum.toLocaleString()} pcs`);
-  console.log(`   Plan Qty sum: ${totalPlanQty.toLocaleString()} pcs`);
   
   // ===== 9. BULK INSERT =====
   const chunkSize = 500;
   
-  console.log(`\n⬆️  Inserting ${ordersToInsert.length} orders...`);
   for (let i = 0; i < ordersToInsert.length; i += chunkSize) {
     const chunk = ordersToInsert.slice(i, i + chunkSize);
     await prisma.order.createMany({ data: chunk });
-    console.log(`   ${Math.min(i + chunkSize, ordersToInsert.length)} / ${ordersToInsert.length}`);
   }
   
-  console.log(`⬆️  Inserting ${dailyRecordsToInsert.length} daily records...`);
   for (let i = 0; i < dailyRecordsToInsert.length; i += chunkSize) {
     const chunk = dailyRecordsToInsert.slice(i, i + chunkSize);
     await prisma.productionDaily.createMany({ data: chunk });
-    console.log(`   ${Math.min(i + chunkSize, dailyRecordsToInsert.length)} / ${dailyRecordsToInsert.length}`);
   }
   
   // ===== 10. UPDATE UNIT METRICS =====
@@ -531,23 +505,10 @@ async function seed() {
   }
   
   // ===== FINAL SUMMARY =====
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║             IMPORT COMPLETED SUCCESSFULLY               ║');
-  console.log('╠══════════════════════════════════════════════════════════╣');
-  console.log(`║  Units:          ${String(unitMap.size).padStart(6)}                              ║`);
-  console.log(`║  Lines:          ${String(lineDefMap.size).padStart(6)}                                ║`);
-  console.log(`║  Buyers:         ${String(buyerDefMap.size).padStart(6)}                              ║`);
-  console.log(`║  Orders:         ${String(ordersToInsert.length).padStart(6)}                              ║`);
-  console.log(`║  Daily Records:  ${String(dailyRecordsToInsert.length).padStart(6)}                              ║`);
-  console.log(`║  Total ODR QTY:  ${String(totalOdrQty.toLocaleString()).padStart(12)}                        ║`);
-  console.log(`║  Total Plan QTY: ${String(totalPlanQty.toLocaleString()).padStart(12)}                        ║`);
-  console.log(`║  Daily Target:   ${String(dailyTargetSum.toLocaleString()).padStart(12)}                        ║`);
-  console.log('╚══════════════════════════════════════════════════════════╝');
 }
 
 seed()
   .catch((e) => {
-    console.error('❌ Import error:', e);
     process.exit(1);
   })
   .finally(async () => {

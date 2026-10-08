@@ -231,17 +231,18 @@ export async function GET(req: NextRequest) {
 
     rows.push(grandTotalRow);
 
+    const effectiveMonth = month || (rows[0] ? rows[0].key : new Date().toISOString().slice(0, 7));
+
     return NextResponse.json({
-      title: `Month of ${month || "Oct'26"} Sign off Plan Summary`,
-      month: month || "2026-10",
-      signOffDate: "28-Sep / 21-Oct",
+      title: `Month Sign off Plan Summary`,
+      month: effectiveMonth,
+      signOffDate: "Monthly Plan",
       rows,
       budgetSah: 566920,
       budgetVar: Number((grandPlanSah - 566920).toFixed(1)),
       openDays: 26
     });
   } catch (error: any) {
-    console.error("Error in signoff summary API:", error);
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

@@ -113,18 +113,9 @@ dataRows.forEach((row, idx) => {
   }
 });
 
-console.log('=== ROW TYPE BREAKDOWN ===');
-console.log(`Order item rows: ${orderItemCount}`);
-console.log(`Subtotal/summary rows: ${subtotalRowCount}`);
-console.log(`Meta/other rows: ${metaRowCount}`);
-console.log(`Empty rows: ${emptyRowCount}`);
-console.log(`Total data rows: ${dataRows.length}`);
 
 // Show the subtotal rows - these are the KEY
-console.log('\n=== SUBTOTAL ROWS (first 30) ===');
 subtotalRows.slice(0, 30).forEach(r => {
-  console.log(`  Row ${r.idx}: line="${r.line}" unit="${r.unit}" buyer="${r.buyer}" planQty=${r.planQty} day1=${r.day1} odrQty=${r.odrQty} smv=${r.smv}`);
-  console.log(`           data: [planQty=${r.rowData[0]}, d1=${r.rowData[1]}, d2=${r.rowData[2]}, d3=${r.rowData[3]}]`);
 });
 
 // Now check: for each line, how many order items and how many subtotal rows?
@@ -155,16 +146,12 @@ dataRows.forEach((row, idx) => {
   }
 });
 
-console.log('\n=== LINES BREAKDOWN (order items vs subtotal rows) ===');
 const lineNames = Object.keys(lineGroups).sort();
 lineNames.forEach(ln => {
   const g = lineGroups[ln];
-  console.log(`  ${ln}: ${g.orderItems} orders, ${g.subtotalRows} subtotals, ${g.totalRows} total`);
 });
-console.log(`Total unique lines: ${lineNames.length}`);
 
 // Check what columns 17-21 actually look like in order items vs subtotals
-console.log('\n=== ORDER QTY COLUMN (col 17 = "ODR QTY") CHECK ===');
 let hasOdrQty = 0;
 let missingOdrQty = 0;
 orderItems.forEach(item => {
@@ -174,22 +161,15 @@ orderItems.forEach(item => {
     missingOdrQty++;
   }
 });
-console.log(`Order items with ODR QTY: ${hasOdrQty}`);
-console.log(`Order items WITHOUT ODR QTY: ${missingOdrQty}`);
 
 // Show some items with ODR QTY
-console.log('\nSample order items WITH ODR QTY:');
 orderItems.filter(i => i.odrQty).slice(0, 5).forEach(i => {
-  console.log(`  Row ${i.idx}: ${i.line} ${i.buyer} odrQty=${i.odrQty} planQty=${i.planQty} smv=${i.smv}`);
 });
 
-console.log('\nSample order items WITHOUT ODR QTY:');
 orderItems.filter(i => !i.odrQty).slice(0, 5).forEach(i => {
-  console.log(`  Row ${i.idx}: ${i.line} ${i.buyer} odrQty="${i.odrQty}" planQty=${i.planQty} smv=${i.smv}`);
 });
 
 // Critical check: do order item rows have day-column data or only subtotal rows?
-console.log('\n=== DAY COLUMN DATA: ORDER ITEMS vs SUBTOTALS ===');
 let orderItemsWithDayData = 0;
 let subtotalsWithDayData = 0;
 
@@ -205,11 +185,8 @@ subtotalRows.forEach(sr => {
   }
 });
 
-console.log(`Order items with day1 data: ${orderItemsWithDayData} / ${orderItems.length}`);
-console.log(`Subtotal rows with day1 data: ${subtotalsWithDayData} / ${subtotalRows.length}`);
 
 // This is CRITICAL - check subtotal row pattern for a single line (U02-01)
-console.log('\n=== DETAILED SUBTOTAL PATTERN FOR U02-01 ===');
 let u02_01_start = false;
 let u02_01_count = 0;
 dataRows.forEach((row, idx) => {
@@ -224,23 +201,15 @@ dataRows.forEach((row, idx) => {
   if (u02_01_start && !buyer && !orderCode) {
     u02_01_count++;
     // Show ALL columns for this subtotal row
-    console.log(`  Subtotal row ${u02_01_count} at dataRow ${idx}:`);
-    console.log(`    line=${row[0]} manpower=${row[1]} unit=${row[2]}`);
-    console.log(`    planQty=${row[34]} workDays=${row[32]} planDay=${row[33]}`);
-    console.log(`    day values: ${Array.from({length: 5}, (_, i) => row[35+i]).join(', ')}...`);
-    console.log(`    odrQty=${row[17]} smv=${row[18]}`);
     
     // Check what's in buyer/orderCode/style columns - might have "Plan Total" or "Target" labels
-    console.log(`    col3=${row[3]} col4=${row[4]} col5=${row[5]} col6=${row[6]} col7=${row[7]} col8=${row[8]}`);
   }
 });
 
 // Now compare with existing seed script
-console.log('\n=== COMPARING WITH CURRENT SEED SCRIPT ===');
 // Read the existing seed script
 import fs from 'fs';
 const seedScript = fs.readFileSync('scripts/seed_from_excel.mjs', 'utf8');
-console.log('Seed script length:', seedScript.length, 'bytes');
 
 // Check key patterns in seed
 const patterns = [
@@ -258,10 +227,7 @@ const patterns = [
 
 patterns.forEach(p => {
   if (seedScript.includes(p)) {
-    console.log(`  FOUND: "${p}"`);
   } else {
-    console.log(`  MISSING: "${p}"`);
   }
 });
 
-console.log('\n=== PHASE 2 AUDIT COMPLETE ===');

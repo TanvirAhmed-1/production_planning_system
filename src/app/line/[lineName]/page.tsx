@@ -202,7 +202,6 @@ export default function LineDetailPage({ params }: { params: Promise<{ lineName:
         const json = await res.json();
         setData(json);
       } catch (err: any) {
-        console.error("Error fetching line details:", err);
         setError(err.message || "Failed to load line details");
       } finally {
         setLoading(false);

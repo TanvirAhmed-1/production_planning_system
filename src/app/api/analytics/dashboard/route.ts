@@ -21,7 +21,6 @@ export async function GET(req: NextRequest) {
     const data = await getDashboardData(filters);
     return NextResponse.json(data);
   } catch (err: any) {
-    console.error('Dashboard API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to fetch dashboard data' }, { status: 500 });
   }
 }

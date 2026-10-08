@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const batchId = searchParams.get('batchId');
-    const month = searchParams.get('month') || '2026-10';
+    const month = searchParams.get('month') || undefined;
     const unitCode = searchParams.get('unitCode');
     const lineName = searchParams.get('lineName');
     const buyerName = searchParams.get('buyerName');
@@ -308,7 +308,6 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Failed to load Excel sheet data:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Internal Server Error' },
       { status: 500 }

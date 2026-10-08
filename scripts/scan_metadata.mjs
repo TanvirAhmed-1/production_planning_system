@@ -34,8 +34,3 @@ for (let i = 1; i < rows.length; i++) {
   }
 }
 
-console.log('Summary types found in Col 33:', Array.from(summaryTypes));
-console.log('Units found:', Array.from(units));
-console.log('Buyers count:', buyers.size, 'Sample buyers:', Array.from(buyers).slice(0, 10));
-console.log('Lines count:', lines.size, 'Sample lines:', Array.from(lines).slice(0, 10));
-console.log(`Total order rows: ${totalOrderRows}, Total summary rows: ${totalSpecialRows}`);

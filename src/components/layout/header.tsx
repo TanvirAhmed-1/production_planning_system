@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Menu,
   Download,
@@ -10,7 +11,10 @@ import {
   FileSpreadsheet,
   Settings,
   Layers,
-  Calendar
+  Calendar,
+  LogOut,
+  ShieldAlert,
+  UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,10 +42,22 @@ export function Header({
   onRefresh,
   isRefreshing = false,
   alertCount = 0,
-  selectedMonth = "2026-10",
+  selectedMonth = "",
   onMonthChange,
-  monthOptions = [{ label: "October 2026", value: "2026-10" }]
+  monthOptions = []
 }: HeaderProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } catch (e) {
+      router.push("/login");
+    }
+  };
+
   const titles: Record<string, { title: string; desc: string }> = {
     overview: { title: "Production Analytics & Performance Dashboard", desc: "Real-time production plan, efficiency, line outputs, and KPIs" },
     "daily-report": { title: "Daily Production Report", desc: "Date-wise planned vs actual output, achievement %, and SAH" },
@@ -59,7 +75,8 @@ export function Header({
     "excel-import": { title: "Excel Import & Synchronization", desc: "Upload and validate monthly production plan Excel files" },
     "import-history": { title: "Excel Import History", desc: "Log of imported plan batches and synchronizations" },
     settings: { title: "System Configuration & Thresholds", desc: "Manage efficiency alert thresholds and operational parameters" },
-    "about-us": { title: "About Developer & ERP Platform", desc: "Professional Profile & Portfolio of Tanvir Ahmed (Full Stack Developer & Garments ERP Specialist)" }
+    "about-us": { title: "About Developer & ERP Platform", desc: "Professional Profile & Portfolio of Tanvir Ahmed (Full Stack Developer & Garments ERP Specialist)" },
+    "user-management": { title: "User Management & Role Governance", desc: "Super Admin authorization, account creation, and user role assignments" }
   };
 
   const currentMeta = titles[activeTab] || { title: "Garments Production ERP", desc: "Production Management" };
@@ -87,15 +104,15 @@ export function Header({
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {/* Month Selector */}
-        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-xs font-medium dark:border-slate-800 dark:bg-slate-800/80">
-          <Calendar className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+        <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2 sm:px-2.5 py-1 text-xs font-medium dark:border-slate-800 dark:bg-slate-800/80">
+          <Calendar className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
           <select
             value={selectedMonth}
             onChange={(e) => onMonthChange?.(e.target.value)}
             aria-label="Filter by month"
-            className="bg-transparent text-slate-800 dark:text-slate-200 font-semibold focus:outline-none cursor-pointer text-xs"
+            className="bg-transparent text-slate-800 dark:text-slate-200 font-semibold focus:outline-none cursor-pointer text-xs max-w-[90px] sm:max-w-none"
           >
             {monthOptions.map((m) => (
               <option key={m.value} value={m.value} className="bg-white dark:bg-slate-900">
@@ -111,7 +128,7 @@ export function Header({
           size="sm"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="h-8 gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+          className="h-8 w-8 sm:w-auto sm:px-2.5 p-0 gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300"
           title="Refresh Data"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-sky-500" : ""}`} />
@@ -119,7 +136,7 @@ export function Header({
         </Button>
 
         {/* Export Excel */}
-        <div className="relative group">
+        <div className="relative group hidden sm:block">
           <Button
             variant="outline"
             size="sm"
@@ -127,7 +144,7 @@ export function Header({
             className="h-8 gap-1.5 text-xs font-medium border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
           >
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export Excel</span>
+            <span className="hidden md:inline">Export Excel</span>
           </Button>
         </div>
 
@@ -136,10 +153,11 @@ export function Header({
           variant="default"
           size="sm"
           onClick={onOpenImportModal}
-          className="h-8 gap-1.5 text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white shadow-sm"
+          className="h-8 gap-1.5 px-2.5 sm:px-3 text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white shadow-sm"
         >
           <Upload className="h-3.5 w-3.5" />
-          <span>Upload Plan</span>
+          <span className="hidden sm:inline">Upload Plan</span>
+          <span className="sm:hidden">Upload</span>
         </Button>
 
         {/* Settings button */}
@@ -150,6 +168,25 @@ export function Header({
         >
           <Settings className="h-4 w-4" />
         </button>
+
+        {/* Super Admin Status & Logout */}
+        <div className="flex items-center gap-1 sm:gap-1.5 pl-1 sm:pl-1.5 border-l border-slate-200 dark:border-slate-800">
+          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 font-bold text-[10px] hidden md:inline-flex items-center gap-1 py-1">
+            <ShieldAlert className="h-3 w-3 text-purple-600" />
+            Super Admin
+          </Badge>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="h-8 w-8 sm:w-auto p-0 sm:px-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 gap-1"
+            title="Sign Out of Production ERP"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Logout</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

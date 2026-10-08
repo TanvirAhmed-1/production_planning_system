@@ -7,9 +7,7 @@ const wb = xlsx.readFile(filePath);
 const sheet = wb.Sheets['Summary'];
 const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
-console.log('--- Summary Sheet Rows ---');
 rows.forEach((r, idx) => {
   if (r && r.some(c => c !== null)) {
-    console.log(`Row ${idx}:`, JSON.stringify(r.filter(c => c !== null).slice(0, 15)));
   }
 });

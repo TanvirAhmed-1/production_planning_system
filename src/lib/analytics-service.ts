@@ -70,9 +70,10 @@ export async function getDashboardData(filters: FilterParams = {}) {
   let effectiveBatchId = filters.batchId && filters.batchId !== 'ALL' ? filters.batchId : undefined;
   let activePlanInfo: any = null;
 
-  if (effectiveBatchId) {
-    try {
-      const batch = await prisma.importBatch.findUnique({
+  try {
+    let batch: any = null;
+    if (effectiveBatchId) {
+      batch = await prisma.importBatch.findUnique({
         where: { id: effectiveBatchId },
         include: {
           actualBatches: {
@@ -83,40 +84,50 @@ export async function getDashboardData(filters: FilterParams = {}) {
           }
         }
       });
-
-      if (batch) {
-        if (batch.batchType === 'ACTUAL' && batch.planBatchId) {
-          effectiveBatchId = batch.planBatchId;
-          const parent = await prisma.importBatch.findUnique({
-            where: { id: batch.planBatchId },
-            include: {
-              actualBatches: {
-                select: { id: true, fileName: true, importedRows: true, createdAt: true, summary: true }
-              }
-            }
-          });
-          if (parent) {
-            activePlanInfo = {
-              id: parent.id,
-              fileName: parent.fileName,
-              month: parent.month,
-              batchType: parent.batchType,
-              linkedActuals: parent.actualBatches || []
-            };
+    } else {
+      batch = await prisma.importBatch.findFirst({
+        where: { batchType: 'PLAN' },
+        include: {
+          actualBatches: {
+            select: { id: true, fileName: true, importedRows: true, createdAt: true, summary: true }
           }
-        } else {
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      if (batch) effectiveBatchId = batch.id;
+    }
+
+    if (batch) {
+      if (batch.batchType === 'ACTUAL' && batch.planBatchId) {
+        effectiveBatchId = batch.planBatchId;
+        const parent = await prisma.importBatch.findUnique({
+          where: { id: batch.planBatchId },
+          include: {
+            actualBatches: {
+              select: { id: true, fileName: true, importedRows: true, createdAt: true, summary: true }
+            }
+          }
+        });
+        if (parent) {
           activePlanInfo = {
-            id: batch.id,
-            fileName: batch.fileName,
-            month: batch.month,
-            batchType: batch.batchType,
-            linkedActuals: batch.actualBatches || []
+            id: parent.id,
+            fileName: parent.fileName,
+            month: parent.month,
+            batchType: parent.batchType,
+            linkedActuals: parent.actualBatches || []
           };
         }
+      } else {
+        activePlanInfo = {
+          id: batch.id,
+          fileName: batch.fileName,
+          month: batch.month,
+          batchType: batch.batchType,
+          linkedActuals: batch.actualBatches || []
+        };
       }
-    } catch (e) {
-      console.warn('Failed to resolve activePlanInfo:', e);
     }
+  } catch (e) {
   }
 
   const effectiveFilters = effectiveBatchId ? { ...filters, batchId: effectiveBatchId } : filters;
@@ -182,10 +193,50 @@ export async function getDashboardData(filters: FilterParams = {}) {
   const totalActualSah = dailyAgg._sum.actualSah || 0;
   const totalClockHours = dailyAgg._sum.clockHours || 0;
 
-  // If actualSah > 0, calculate actual efficiency. Otherwise calculate planned efficiency
+  // Planned efficiency across full month target & clock hours
   const plannedEfficiency = totalClockHours > 0 ? Number(((totalTargetSah / totalClockHours) * 100).toFixed(1)) : 0;
-  const actualEfficiency = totalClockHours > 0 && totalActualSah > 0 ? Number(((totalActualSah / totalClockHours) * 100).toFixed(1)) : 0;
-  const averageEfficiency = totalActualSah > 0 ? actualEfficiency : plannedEfficiency;
+
+  // Actual efficiency calculated from actual floor records or active days (not unworked future days)
+  let actualEfficiency = 0;
+  if (totalActualSah > 0) {
+    const actualBatchIds = activePlanInfo?.linkedActuals?.map((a: any) => a.id) || [];
+    if (actualBatchIds.length > 0) {
+      const actAgg = await prisma.productionActualRecord.aggregate({
+        where: {
+          importBatchId: { in: actualBatchIds },
+          ...(filters.unitCode && filters.unitCode !== 'ALL' ? { unitCode: filters.unitCode } : {}),
+          ...(filters.lineName && filters.lineName !== 'ALL' ? { lineName: filters.lineName } : {}),
+          ...(filters.buyerName && filters.buyerName !== 'ALL' ? { buyerName: filters.buyerName } : {})
+        },
+        _sum: {
+          actualSah: true,
+          clockHours: true
+        }
+      });
+      const actSah = actAgg._sum.actualSah || 0;
+      const actClk = actAgg._sum.clockHours || 0;
+      if (actClk > 0 && actSah > 0) {
+        actualEfficiency = Number(((actSah / actClk) * 100).toFixed(1));
+      }
+    }
+
+    if (actualEfficiency === 0) {
+      const activeActualAgg = await prisma.productionDaily.aggregate({
+        where: {
+          ...activeWhere,
+          actualQty: { gt: 0 }
+        },
+        _sum: {
+          actualSah: true,
+          clockHours: true
+        }
+      });
+      const actClk = activeActualAgg._sum.clockHours || 0;
+      actualEfficiency = actClk > 0 ? Number(((totalActualSah / actClk) * 100).toFixed(1)) : 0;
+    }
+  }
+
+  const averageEfficiency = totalActualSah > 0 && actualEfficiency > 0 ? actualEfficiency : plannedEfficiency;
   const targetAchievementRate = totalPlannedProduction > 0 ? Number(((totalActualProduction / totalPlannedProduction) * 100).toFixed(1)) : 0;
 
   // 3. Line Manpower and Active Lines
@@ -816,9 +867,8 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
       distinct: ['season'],
       select: { season: true }
     }),
-    // Months list: filtered by batch if provided
-    prisma.productionDaily.findMany({
-      where: effectiveBatchId ? { importBatchId: effectiveBatchId } : undefined,
+    // Months list: from all batches and daily records across all years
+    prisma.importBatch.findMany({
       distinct: ['month'],
       select: { month: true },
       orderBy: { month: 'desc' }
@@ -828,12 +878,26 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
   const clusters = [
     { label: 'All Clusters', value: 'ALL' },
     { label: 'B1 Cluster', value: 'B1' },
-    { label: 'B2 Cluster', value: 'B2' },
-    { label: 'Styrax Cluster', value: 'Styrax' }
+    { label: 'B2 Cluster', value: 'B2' }
   ];
 
   const planBatches = batches.filter(b => b.batchType !== 'ACTUAL');
   const actualBatches = batches.filter(b => b.batchType === 'ACTUAL');
+
+  // Dynamically collect and format all distinct months across all 5+ years of data
+  const allMonthsSet = new Set<string>();
+  rawMonths.forEach(m => { if (m.month) allMonthsSet.add(m.month); });
+  batches.forEach(b => { if (b.month) allMonthsSet.add(b.month); });
+  const sortedMonths = Array.from(allMonthsSet).sort().reverse();
+  const months = sortedMonths.map(m => {
+    const match = m.match(/^(\d{4})-(\d{2})$/);
+    if (!match) return { label: m, value: m };
+    const year = parseInt(match[1], 10);
+    const monthIdx = parseInt(match[2], 10) - 1;
+    const date = new Date(Date.UTC(year, monthIdx, 1));
+    const label = date.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    return { label, value: m };
+  });
 
   return {
     clusters,
@@ -841,7 +905,7 @@ export async function getFilterOptions(batchId?: string, unitCode?: string) {
     lines: rawLines.map(l => ({ label: l.name, value: l.name, unit: l.unitCode, cluster: (l as any).cluster })),
     buyers: rawBuyers.map(b => ({ label: b.name, value: b.name })),
     seasons: rawSeasons.map(s => ({ label: s.season!, value: s.season! })),
-    months: rawMonths.map(m => ({ label: m.month, value: m.month })),
+    months,
     batches: batches.map(b => ({
       label: `${b.fileName} (${b.month})${b.batchType === 'ACTUAL' ? ' [ACTUAL]' : ' [PLAN]'}`,
       value: b.id,

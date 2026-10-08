@@ -52,7 +52,6 @@ export async function GET() {
 
     return NextResponse.json(formattedPlans);
   } catch (err: any) {
-    console.error('Plans API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to fetch plan files' }, { status: 500 });
   }
 }

@@ -13,15 +13,9 @@ async function verify() {
   const plSheet = plFile.Sheets['Report'];
   const plRows = XLSX.utils.sheet_to_json(plSheet);
   
-  console.log('╔══════════════════════════════════════════════════════════╗');
-  console.log('║  Cross-Verification: DB vs Production_line Excel        ║');
-  console.log('╚══════════════════════════════════════════════════════════╝');
-  console.log(`\nProduction_line file: ${plRows.length} lines\n`);
   
   // Show the columns in this file
   const cols = Object.keys(plRows[0]);
-  console.log('Columns:', cols.join(' | '));
-  console.log('');
   
   // ===== 2. Get our DB data per line =====
   // Sum Plan Qty from orders (order items only, no subtotals)
@@ -98,8 +92,6 @@ async function verify() {
   });
   
   // ===== 4. COMPARISON TABLE =====
-  console.log('Line            | ProdLine(XL) | OrderItems(XL) | Subtotal(XL)  | DB Orders    | DB Daily     | Match?');
-  console.log(''.padEnd(120, '-'));
   
   let totalProdLine = 0;
   let totalOrderItems = 0;
@@ -133,24 +125,15 @@ async function verify() {
     else mismatchCount++;
     
     const flag = isMatch ? '✅' : '❌';
-    console.log(
       `${lineName.padEnd(16)}| ${String(targetQty).padStart(12)} | ${String(Math.round(orderItemQty)).padStart(14)} | ${String(Math.round(subtotalQty)).padStart(13)} | ${String(dbOrderQty).padStart(12)} | ${String(dbDailyQty).padStart(12)} | ${flag} diff=${diff}`
     );
   });
   
-  console.log(''.padEnd(120, '-'));
-  console.log(
     `${'TOTAL'.padEnd(16)}| ${String(totalProdLine).padStart(12)} | ${String(totalOrderItems).padStart(14)} | ${String(totalSubtotal).padStart(13)} | ${String(totalDbOrders).padStart(12)} | ${String(totalDbDaily).padStart(12)} |`
   );
   
-  console.log(`\n✅ Matched: ${matchCount}/${plRows.length}`);
-  console.log(`❌ Mismatched: ${mismatchCount}/${plRows.length}`);
   
   // ===== 5. EXPLAIN WHY PANDAS SHOWS DOUBLE =====
-  console.log('\n═══ WHY PANDAS SHOWS ~18M INSTEAD OF ~8.5M ═══');
-  console.log('pandas does: df.groupby("Line")["Plan Qty"].sum()');
-  console.log('This sums ALL rows including subtotal rows:');
-  console.log('');
   
   // Show breakdown for first 3 lines
   const sampleLines = plRows.slice(0, 3).map(r => r['Line Name'] || r['Line']);
@@ -159,15 +142,9 @@ async function verify() {
     const allRows = Math.round(birAllMap.get(ln) || 0);
     const subtotal = Math.round(birSubtotalMap.get(ln) || 0);
     const extra = allRows - orderOnly;
-    console.log(`  ${ln}:`);
-    console.log(`    Order items only (correct): ${orderOnly.toLocaleString()}`);
-    console.log(`    Plan/Day subtotal row:      ${subtotal.toLocaleString()} (= sum of order items, DUPLICATE)`);
-    console.log(`    Pandas sum (all rows):      ${allRows.toLocaleString()} (= order items + subtotal + SAH + efficiency)`);
-    console.log(`    Extra from subtotals:       +${extra.toLocaleString()} (this is the bug if you sum ALL rows)`);
-    console.log('');
   });
   
   await prisma.$disconnect();
 }
 
-verify().catch(e => { console.error(e); process.exit(1); });
+verify().catch(e => {  process.exit(1); });

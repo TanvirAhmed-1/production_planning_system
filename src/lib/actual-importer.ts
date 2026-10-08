@@ -62,8 +62,8 @@ export function normalizeLineAlias(lineName: string, unitCode?: string): string[
   const aliases = new Set<string>([ln]);
   if (!ln) return Array.from(aliases);
 
-  // Match pattern like B1U2-01 or B2U02-01 or B1U3-05 or S1U1-01
-  const clusterMatch = ln.match(/^(B[12]|S[12]|U)?U?0?(\d+)[-_](\d+)$/);
+  // Match pattern like B1U2-01 or B2U02-01 or B1U3-05
+  const clusterMatch = ln.match(/^(B[12]|U)?U?0?(\d+)[-_](\d+)$/);
   if (clusterMatch) {
     const unitNum = parseInt(clusterMatch[2], 10);
     const lineNum = parseInt(clusterMatch[3], 10);
@@ -76,7 +76,6 @@ export function normalizeLineAlias(lineName: string, unitCode?: string): string[
     aliases.add(`B2U${unitNum}-${l2Digits}`);
     aliases.add(`B1U${u2Digits}-${l2Digits}`);
     aliases.add(`B2U${u2Digits}-${l2Digits}`);
-    aliases.add(`S1U${unitNum}-${l2Digits}`);
   }
 
   // Also check direct prefix replacements
@@ -120,6 +119,33 @@ export function normalizeLineAlias(lineName: string, unitCode?: string): string[
   }
 
   return Array.from(aliases);
+}
+
+export function isStyrax(
+  cluster?: string | null,
+  unitCode?: string | null,
+  lineName?: string | null,
+  rawUnit?: string | null,
+  rawUnitLine?: string | null
+): boolean {
+  const c = (cluster || '').trim().toUpperCase();
+  const u = (unitCode || '').trim().toUpperCase();
+  const l = (lineName || '').trim().toUpperCase();
+  const ru = (rawUnit || '').trim().toUpperCase();
+  const rul = (rawUnitLine || '').trim().toUpperCase();
+
+  // Check cluster
+  if (c === 'STYRAX' || c.includes('STYRAX') || c === 'S1' || c === 'S2') return true;
+
+  // Check unit code & raw unit (S1, S2, S1U1, S1U2, S1U3, S1U4, STYRAX, etc.)
+  if (u === 'STYRAX' || u.includes('STYRAX') || u.startsWith('S1') || u.startsWith('S2') || u.startsWith('S')) return true;
+  if (ru.includes('STYRAX') || ru.startsWith('S1') || ru.startsWith('S2') || ru.startsWith('S')) return true;
+
+  // Check line name & raw unit-line (S1U1-1, S1U2-1, S1U3-1, S1U4-1, etc.)
+  if (l.startsWith('S1') || l.startsWith('S2') || l.startsWith('S1U') || l.startsWith('S-') || l.includes('STYRAX') || l.startsWith('S')) return true;
+  if (rul.startsWith('S1') || rul.startsWith('S2') || rul.startsWith('S1U') || rul.startsWith('S-') || rul.includes('STYRAX') || rul.startsWith('S')) return true;
+
+  return false;
 }
 
 export function detectCluster(clusterRaw: string | null, unitCode: string, lineName: string): string {
@@ -260,7 +286,16 @@ export async function parseAndImportActualExcel(
         }
       });
       if (hasVal) {
-        rows.push(obj);
+        // Exclude Styrax cluster & units (S1U1, S1U2, S1U3, S1U4, Styrax) at row collection level
+        const rawUnitLine = safeStr(getField(obj, 'Unit-Line', 'Unit_Line', 'Unit Line', 'Line', 'line', 'Line Name'));
+        const lineName = (rawUnitLine || '').toUpperCase();
+        const rawUnit = safeStr(getField(obj, 'Unit', 'unit', 'Unit Code'));
+        const unitCode = normalizeUnitCode(rawUnit || '', lineName);
+        const cluster = detectCluster(safeStr(getField(obj, 'Cluster', 'cluster')), unitCode, lineName);
+
+        if (!isStyrax(cluster, unitCode, lineName, rawUnit, rawUnitLine)) {
+          rows.push(obj);
+        }
       }
     }
 
@@ -332,7 +367,6 @@ export async function parseAndImportActualExcel(
       const sampleMismatches = mismatchedDates.slice(0, 5).join(', ');
       const errorMsg = `Date Mismatch Error: The uploaded actual production file contains dates for month "${childMonthsArray.join(', ')}" (e.g. ${sampleMismatches}), which does NOT match the parent production plan "${planBatch.fileName}" (Plan Month: ${parentPlanMonth}). Actual production data was NOT extracted.`;
 
-      console.error(`Actual Import Validation Rejected: ${errorMsg}`);
 
       return {
         success: false,
@@ -440,6 +474,11 @@ export async function parseAndImportActualExcel(
       const rawUnit = safeStr(getField(r, 'Unit', 'unit', 'Unit Code'));
       const unitCode = normalizeUnitCode(rawUnit || '', lineName);
       const cluster = detectCluster(safeStr(getField(r, 'Cluster', 'cluster')), unitCode, lineName);
+
+      // Exclude Styrax cluster & units (S1U1, S1U2, S1U3, S1U4, S1, Styrax, etc.) from actual production import
+      if (isStyrax(cluster, unitCode, lineName, rawUnit, rawUnitLine)) {
+        continue;
+      }
 
       const actualPcs = safeInt(getField(r, 'Pcs', 'pcs', 'Actual', 'actual_qty', 'Actual Pcs', 'PROD. PCS'), 0);
       const manpower = safeFloat(getField(r, 'MO', 'mo', 'Manpower', 'manpower'), 0);
@@ -603,7 +642,37 @@ export async function parseAndImportActualExcel(
       }
     }
 
-    // 4. Bulk Insert into `ProductionActualRecord`
+    // 4. Overwrite/Rewrite previous Actual Production Records for matching dates under this Plan
+    if (planBatchId && uniqueDatesSet.size > 0) {
+      const datesToOverwrite = Array.from(uniqueDatesSet);
+      
+      // Delete previous actual records for these dates to prevent duplication / rewrite old actuals
+      await prisma.productionActualRecord.deleteMany({
+        where: {
+          planBatchId: planBatchId,
+          dateString: { in: datesToOverwrite }
+        }
+      });
+
+      // Reset existing ProductionDaily actual values for these dates so fresh values apply cleanly
+      await prisma.productionDaily.updateMany({
+        where: {
+          importBatchId: planBatchId,
+          dateString: { in: datesToOverwrite },
+          orderId: null
+        },
+        data: {
+          actualQty: 0,
+          actualSah: 0,
+          efficiency: 0,
+          achievementRate: 0,
+          ttlFob: 0,
+          ttlVa: 0
+        }
+      });
+    }
+
+    // Bulk Insert new records into `ProductionActualRecord`
     const chunkSize = 75;
     for (let i = 0; i < actualRecordsToInsert.length; i += chunkSize) {
       await prisma.productionActualRecord.createMany({

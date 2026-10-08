@@ -28,6 +28,14 @@ export const CANONICAL_UNITS: Record<string, string> = {
   B2U3: 'B2 Unit-03 (B2U3)'
 };
 
+export function isStyrax(unitVal?: string | null, lineVal?: string | null): boolean {
+  const u = (unitVal || '').trim().toUpperCase();
+  const l = (lineVal || '').trim().toUpperCase();
+  if (u.includes('STYRAX') || u.startsWith('S1') || u.startsWith('S2') || u === 'S1' || u === 'S2') return true;
+  if (l.includes('STYRAX') || l.startsWith('S1') || l.startsWith('S2') || l.startsWith('S-') || l.startsWith('S1U') || l.startsWith('S')) return true;
+  return false;
+}
+
 export function normalizeUnitCode(rawUnit: string, lineName: string): string {
   const u = (rawUnit || '').trim().toUpperCase();
   const ln = (lineName || '').trim().toUpperCase();
@@ -37,8 +45,6 @@ export function normalizeUnitCode(rawUnit: string, lineName: string): string {
   if (ln.startsWith('U02') || ln.includes('U02') || ln.includes('B1U2') || u.includes('U02') || u.includes('B1U2')) return 'U02';
   if (ln.startsWith('U03') || ln.includes('U03') || ln.includes('B1U3') || u.includes('U03') || u.includes('B1U3')) return 'U03';
   if (ln.startsWith('U04') || ln.includes('U04') || ln.includes('B1U4') || u.includes('U04') || u.includes('B1U4')) return 'U04';
-  if (ln.startsWith('S1') || u.includes('STYRAX') || u === 'S1') return 'S1';
-  if (ln.startsWith('S2') || u === 'S2') return 'S2';
   if (u.startsWith('B2') || ln.startsWith('B2')) {
     return 'B2U2';
   }
@@ -288,6 +294,11 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
       const lineVal = safeStr(row[C.LINE]);
       const unitVal = safeStr(row[C.UNIT]);
 
+      // Skip any Styrax lines or units completely
+      if (isStyrax(unitVal, lineVal) || (lineVal && isStyrax('', lineVal))) {
+        continue;
+      }
+
       if (lineVal && /^[UB]/i.test(lineVal)) {
         currentLineName = lineVal;
       }
@@ -295,6 +306,10 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
         currentUnitCode = normalizeUnitCode(unitVal, currentLineName || lineVal || '');
       } else if (currentLineName) {
         currentUnitCode = normalizeUnitCode('', currentLineName);
+      }
+
+      if (currentLineName && isStyrax('', currentLineName)) {
+        continue;
       }
 
       if (isOrderItemRow(row)) {
@@ -335,8 +350,9 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
     const unitsToUpdate: { id: string; data: any }[] = [];
 
     for (const code of uniqueUnitCodes) {
+      if (isStyrax(code, '')) continue;
       const displayName = CANONICAL_UNITS[code] || getUnitDisplayName(code);
-      const cluster = code.startsWith('B2') ? 'B2' : code.startsWith('S') ? 'Styrax' : 'B1';
+      const cluster = code.startsWith('B2') ? 'B2' : 'B1';
       const existing = existingUnitMap.get(code);
       if (!existing) {
         const newId = crypto.randomUUID();
@@ -638,7 +654,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
       });
 
       // Order-level ProductionDaily records
-      const orderCluster = (uCode || '').startsWith('B2') ? 'B2' : (uCode || '').startsWith('S') ? 'Styrax' : 'B1';
+      const orderCluster = (uCode || '').startsWith('B2') ? 'B2' : 'B1';
       for (const [dateStr, targetQty] of Object.entries(dailyPlanMap)) {
         const dc = dateColumns.find(d => d.dateStr === dateStr);
         if (dc && targetQty > 0) {
@@ -678,7 +694,7 @@ export async function parseAndImportExcel(buffer: Buffer, fileName: string): Pro
       let lineObj = Array.from(lineDefMap.values()).find(l => l.name === ln);
       if (!lineObj) continue;
 
-      const lineCluster = (lineObj.unitCode || '').startsWith('B2') ? 'B2' : (lineObj.unitCode || '').startsWith('S') ? 'Styrax' : 'B1';
+      const lineCluster = (lineObj.unitCode || '').startsWith('B2') ? 'B2' : 'B1';
       const planRow = subtotals.PLAN;
       const sahRow = subtotals.SAH;
       const machineRow = subtotals.MACHINE;

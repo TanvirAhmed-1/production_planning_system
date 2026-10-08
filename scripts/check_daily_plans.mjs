@@ -8,7 +8,6 @@ const sheet = wb.Sheets['Birichina'];
 const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: null });
 const headers = rows[0];
 
-console.log('Total rows in Birichina sheet:', rows.length);
 
 let orderRowsCount = 0;
 let ordersWithDailyPlan = 0;
@@ -49,7 +48,6 @@ for (let i = 1; i < rows.length; i++) {
   }
 }
 
-console.log({
   orderRowsCount,
   ordersWithDailyPlan,
   totalDailyPlanSum,

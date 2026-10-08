@@ -61,13 +61,8 @@ async function testExport() {
     unitBreakdown[r.Unit] = (unitBreakdown[r.Unit] || 0) + 1;
   }
 
-  console.log('=== TEST EXPORT OF LINES ===');
-  console.log('Export Rows Count:', exportRows.length);
-  console.log('Export Total Target Qty:', totalTarget.toLocaleString());
-  console.log('Export Total Actual Qty:', totalActual.toLocaleString());
-  console.log('Export Unit Breakdown:', unitBreakdown);
 
   await prisma.$disconnect();
 }
 
-testExport().catch(console.error);
+testExport().catch(() => {});

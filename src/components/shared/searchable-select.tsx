@@ -150,7 +150,7 @@ export function SearchableSelect({
       {isOpen && (
         <div
           className={cn(
-            "absolute z-50 mt-1.5 rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 dark:border-slate-800 dark:bg-slate-900 dark:ring-white/10 min-w-[220px]",
+            "absolute z-50 mt-1.5 rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 dark:border-slate-800 dark:bg-slate-900 dark:ring-white/10 min-w-[200px] max-w-[calc(100vw-1.5rem)]",
             dropdownAlign === "right" ? "right-0" : "left-0",
             dropdownWidth,
             dropdownClassName

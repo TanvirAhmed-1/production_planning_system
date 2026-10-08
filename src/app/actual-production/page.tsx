@@ -96,7 +96,6 @@ export default function ActualProductionDetailsPage() {
         setSelectedBatchId(json.activeBatch.id);
       }
     } catch (err: any) {
-      console.error(err);
       setError(err.message || "Error fetching actual production data");
     } finally {
       setLoading(false);
@@ -463,60 +462,69 @@ export default function ActualProductionDetailsPage() {
 
         {/* Search & Filter Toolbar: Unit, Line, Date & Text Search */}
         <Card className="shadow-xs border-slate-200/90 dark:border-slate-800">
-          <CardContent className="p-2.5 sm:p-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2.5">
+          <CardContent className="p-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 w-full sm:w-auto">
                 {/* Search Input */}
-                <div className="relative w-48 sm:w-60">
+                <div className="relative w-full sm:w-56">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <Input
                     placeholder="Search style, OC, line, buyer..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-8 pl-8 text-xs"
+                    className="h-8 pl-8 text-xs w-full"
                   />
                 </div>
 
-                {/* Unit Filter */}
-                <SearchableSelect
-                  label="Unit:"
-                  placeholder="All Units"
-                  searchPlaceholder="Search unit..."
-                  allOptionLabel="All Units"
-                  allOptionValue="ALL"
-                  value={selectedUnit}
-                  options={data?.filterOptions?.units || []}
-                  onChange={handleUnitChange}
-                  dropdownWidth="w-56"
-                />
-
-                {/* Cascaded Line Filter */}
-                <SearchableSelect
-                  label="Line:"
-                  placeholder="All Lines"
-                  searchPlaceholder="Search line..."
-                  allOptionLabel={`All Lines (${cascadedLines.length})`}
-                  allOptionValue="ALL"
-                  value={selectedLine}
-                  options={cascadedLines}
-                  onChange={(val) => setSelectedLine(val)}
-                  dropdownWidth="w-64"
-                />
-
-                {/* Date Filter */}
-                {data?.filterOptions?.dates && data.filterOptions.dates.length > 0 && (
+                {/* 2-Column Grid on Mobile, Flex on Desktop */}
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                  {/* Unit Filter */}
                   <SearchableSelect
-                    label="Date:"
-                    placeholder="All Dates"
-                    searchPlaceholder="Search date..."
-                    allOptionLabel="All Dates"
+                    label="Unit:"
+                    placeholder="All"
+                    searchPlaceholder="Search unit..."
+                    allOptionLabel="All Units"
                     allOptionValue="ALL"
-                    value={selectedDate}
-                    options={data.filterOptions.dates.map((d: string) => ({ label: d, value: d }))}
-                    onChange={(val) => setSelectedDate(val)}
-                    dropdownWidth="w-48"
+                    value={selectedUnit}
+                    options={data?.filterOptions?.units || []}
+                    onChange={handleUnitChange}
+                    className="w-full sm:w-36"
+                    triggerClassName="w-full h-8 text-xs"
+                    dropdownWidth="w-56"
                   />
-                )}
+
+                  {/* Cascaded Line Filter */}
+                  <SearchableSelect
+                    label="Line:"
+                    placeholder="All"
+                    searchPlaceholder="Search line..."
+                    allOptionLabel={`All (${cascadedLines.length})`}
+                    allOptionValue="ALL"
+                    value={selectedLine}
+                    options={cascadedLines}
+                    onChange={(val) => setSelectedLine(val)}
+                    className="w-full sm:w-36"
+                    triggerClassName="w-full h-8 text-xs"
+                    dropdownWidth="w-64"
+                  />
+
+                  {/* Date Filter */}
+                  {data?.filterOptions?.dates && data.filterOptions.dates.length > 0 && (
+                    <SearchableSelect
+                      label="Date:"
+                      placeholder="All"
+                      searchPlaceholder="Search date..."
+                      allOptionLabel="All Dates"
+                      allOptionValue="ALL"
+                      value={selectedDate}
+                      options={data.filterOptions.dates.map((d: string) => ({ label: d, value: d }))}
+                      onChange={(val) => setSelectedDate(val)}
+                      className="w-full sm:w-36"
+                      triggerClassName="w-full h-8 text-xs"
+                      dropdownWidth="w-48"
+                    />
+                  )}
+                </div>
 
                 {/* Reset Filters Button */}
                 {hasActiveFilters && (
@@ -524,7 +532,7 @@ export default function ActualProductionDetailsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={resetFilters}
-                    className="h-8 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 gap-1 font-semibold"
+                    className="h-8 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 gap-1 font-semibold self-start sm:self-auto"
                   >
                     <RotateCcw className="h-3 w-3" />
                     <span>Reset</span>
@@ -532,7 +540,7 @@ export default function ActualProductionDetailsPage() {
                 )}
               </div>
 
-              <div className="text-xs text-slate-500 font-medium">
+              <div className="text-xs text-slate-500 font-medium pt-1 sm:pt-0">
                 Matching Lines: <strong className="text-slate-900 dark:text-slate-100">{data?.lineBreakdown?.length || 0}</strong> | Records: <strong className="text-slate-900 dark:text-slate-100">{data?.records?.length || 0}</strong>
               </div>
             </div>

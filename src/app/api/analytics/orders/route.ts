@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
     const data = await getOrdersReport(filters, page, pageSize);
     return NextResponse.json(data);
   } catch (err: any) {
-    console.error('Orders API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to fetch orders' }, { status: 500 });
   }
 }

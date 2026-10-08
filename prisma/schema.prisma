@@ -10,12 +10,17 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String
+  password    String    @default("")
+  role        String    @default("PLANNER") // "SUPER_ADMIN", "ADMIN", "PLANNER", "VIEWER"
+  status      String    @default("ACTIVE")  // "ACTIVE", "INACTIVE"
+  department  String?   @default("Production Planning")
+  phone       String?
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("users")
 }

@@ -105,7 +105,6 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (err: any) {
-    console.error('Export API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to export Excel' }, { status: 500 });
   }
 }

@@ -61,7 +61,26 @@ export async function GET(req: NextRequest) {
       ],
     });
 
-    // 2. Fetch all orders running on this date with style info
+    // 2. Fetch all actual floor records for this date from ProductionActualRecord
+    const actualFloorRecords = await prisma.productionActualRecord.findMany({
+      where: {
+        dateString: dateStr,
+        ...(unitCode && unitCode !== 'ALL' ? { unitCode } : {}),
+      },
+      orderBy: [
+        { unitCode: 'asc' },
+        { lineName: 'asc' },
+      ],
+    });
+
+    const actualsByLine: Record<string, any[]> = {};
+    for (const ar of actualFloorRecords) {
+      const ln = ar.lineName.toUpperCase();
+      if (!actualsByLine[ln]) actualsByLine[ln] = [];
+      actualsByLine[ln].push(ar);
+    }
+
+    // 3. Fetch all orders running on this date with style info
     const orderRecords = await prisma.productionDaily.findMany({
       where: whereOrderDaily,
       include: {
@@ -90,7 +109,7 @@ export async function GET(req: NextRequest) {
     // Group running styles by line
     const stylesByLine: Record<string, any[]> = {};
     for (const ordRec of orderRecords) {
-      const lineName = ordRec.line?.name || 'UNASSIGNED';
+      const lineName = (ordRec.line?.name || 'UNASSIGNED').toUpperCase();
       if (!stylesByLine[lineName]) {
         stylesByLine[lineName] = [];
       }
@@ -107,26 +126,43 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 3. Format line details list
+    // 4. Format line details list
     const lines = lineSummaries.map((rec) => {
       const lineName = rec.line?.name || 'Unknown';
-      const styles = stylesByLine[lineName] || [];
+      const upperLine = lineName.toUpperCase();
+      const styles = stylesByLine[upperLine] || [];
+      const floorActuals = actualsByLine[upperLine] || [];
+
+      // Primary buyer and style from actual records or planned orders
+      const primaryActual = floorActuals[0];
+      const primaryStyle = styles[0];
+
+      const buyerName = primaryActual?.buyerName || primaryStyle?.buyer || 'SQ Group';
+      const styleRef = primaryActual?.style || primaryStyle?.styleRef || 'General Style';
+      const oc = primaryActual?.oc || primaryStyle?.poNo || '-';
+      const smv = primaryActual?.smv || primaryStyle?.smv || rec.smv || 2.5;
+
       const target = rec.targetQty || 0;
-      const actual = rec.actualQty || 0;
-      const gap = rec.gap || (target - actual);
+      const actual = rec.actualQty || (floorActuals.reduce((sum, f) => sum + f.actualPcs, 0)) || 0;
+      const gap = target - actual;
       const targetSah = Number((rec.targetSah || 0).toFixed(2));
-      const actualSah = Number((rec.actualSah || 0).toFixed(2));
-      const clockHours = Number((rec.clockHours || 0).toFixed(2));
-      const plannedEfficiency = clockHours > 0 ? Math.round((targetSah / clockHours) * 100) : 0;
-      const actualEfficiency = clockHours > 0 && actualSah > 0 ? Math.round((actualSah / clockHours) * 100) : 0;
-      const efficiency = rec.plannedEfficiency ? Math.round(rec.plannedEfficiency) : plannedEfficiency;
+      const actualSah = Number(((rec.actualSah || 0) || (floorActuals.reduce((sum, f) => sum + (f.actualSah || 0), 0))).toFixed(2));
+      const clockHours = Number(((rec.clockHours || 0) || (primaryActual?.clockHours || 0)).toFixed(2));
+      const plannedEfficiency = clockHours > 0 && targetSah > 0 ? Math.round((targetSah / clockHours) * 100) : (rec.plannedEfficiency || 0);
+      const actualEfficiency = clockHours > 0 && actualSah > 0 ? Math.round((actualSah / clockHours) * 100) : (rec.efficiency || 0);
+      const efficiency = actualEfficiency > 0 ? actualEfficiency : plannedEfficiency;
 
       return {
         lineId: rec.lineId,
         lineName,
         unitCode: rec.unit?.code || rec.line?.unitCode || 'Unit',
         unitName: rec.unit?.name || 'Unit',
-        manpower: rec.manpower || rec.line?.manpower || 25,
+        buyerName,
+        styleRef,
+        oc,
+        smv,
+        cluster: rec.cluster || 'B1',
+        manpower: rec.manpower || rec.line?.manpower || primaryActual?.manpower || 25,
         workingHours: rec.line?.workingHours || 10.0,
         target,
         actual,
@@ -137,9 +173,21 @@ export async function GET(req: NextRequest) {
         plannedEfficiency,
         actualEfficiency,
         efficiency,
-        achievementRate: target > 0 ? Number(((actual / target) * 100).toFixed(1)) : 0,
-        stylesCount: styles.length,
+        achievementRate: target > 0 ? Number(((actual / target) * 100).toFixed(1)) : (actual > 0 ? 100 : 0),
+        stylesCount: styles.length || floorActuals.length,
         styles,
+        floorActuals: floorActuals.map(fa => ({
+          buyer: fa.buyerName,
+          style: fa.style,
+          oc: fa.oc,
+          smv: fa.smv,
+          actualPcs: fa.actualPcs,
+          actualSah: fa.actualSah,
+          clockHours: fa.clockHours,
+          efficiency: fa.effPercent,
+          fobPcs: fa.fobPcs,
+          vaPcs: fa.vaPcs
+        }))
       };
     });
 
@@ -202,7 +250,6 @@ export async function GET(req: NextRequest) {
       lines,
     });
   } catch (error: any) {
-    console.error('Date details API error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

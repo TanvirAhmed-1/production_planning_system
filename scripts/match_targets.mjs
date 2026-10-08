@@ -15,7 +15,6 @@ function matchExactTargets() {
     }
   }
 
-  console.log(`Date cols: ${dateCols.length}`);
 
   // Check all rows and check column 2 (Unit) vs line string prefix
   const unitTotals = {
@@ -65,15 +64,9 @@ function matchExactTargets() {
     }
   }
 
-  console.log('All Rows Planned Sum:', allRowsPlanned);
-  console.log('Plan/Day Rows Planned Sum:', planDayRowsPlanned);
-  console.log('Style Rows Planned Sum:', styleRowsPlanned);
-  console.log('Unit Totals from Style Rows:', unitTotals);
 
   // Check column 10/11/12 (e.g. Plan Qty column in Excel)
-  console.log('\nHeader columns 10-35:');
   for (let c = 10; c < 35; c++) {
-    console.log(`Col ${c}: "${header[c]}"`);
   }
 
   let col11PlanSum = 0;
@@ -86,7 +79,6 @@ function matchExactTargets() {
       col11PlanSum += v;
     }
   }
-  console.log('\nColumn 11 ("Plan Qty") Sum:', col11PlanSum);
 }
 
 matchExactTargets();

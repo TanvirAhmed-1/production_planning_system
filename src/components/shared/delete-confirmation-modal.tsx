@@ -37,7 +37,6 @@ export function DeleteConfirmationModal({
       await onConfirm();
       onClose();
     } catch (err) {
-      console.error("Failed to execute delete action:", err);
     } finally {
       setIsDeleting(false);
     }

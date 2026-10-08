@@ -10,6 +10,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Production ERP | Garments Production Planning & Performance Analytics",
   description: "Enterprise Production Planning, Line Efficiency Monitoring, and Garments Manufacturing Analytics MIS Dashboard",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

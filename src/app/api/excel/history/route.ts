@@ -81,7 +81,6 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error('History API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to fetch import history' }, { status: 500 });
   }
 }
@@ -200,7 +199,6 @@ export async function DELETE(req: NextRequest) {
       message: `Actual production batch "${targetBatch.fileName}" was deleted successfully.`
     });
   } catch (err: any) {
-    console.error('Delete Batch API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to delete import batch' }, { status: 500 });
   }
 }

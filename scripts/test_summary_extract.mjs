@@ -37,7 +37,3 @@ for (let i = 1; i < rows.length; i++) {
   }
 }
 
-console.log('Detected summary rows for lines:', Object.keys(lineSummaries).length);
-console.log('Sample for U02-01:', lineSummaries['U02-01']);
-console.log('Sample for U03-01:', lineSummaries['U03-01']);
-console.log('Sample for B2U2-01:', lineSummaries['B2U2-01']);

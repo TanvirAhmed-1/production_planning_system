@@ -375,7 +375,6 @@ export async function GET(req: NextRequest) {
       records: records.slice(0, 300) // First 300 records for audit log table
     });
   } catch (err: any) {
-    console.error('Actual Production API Error:', err);
     return NextResponse.json(
       { success: false, error: err.message || 'Failed to fetch actual production data' },
       { status: 500 }

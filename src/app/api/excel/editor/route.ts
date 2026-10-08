@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const batchId = searchParams.get('batchId') || 'ALL';
     const unitCode = searchParams.get('unitCode') || 'U02';
     const lineName = searchParams.get('lineName') || 'ALL';
-    const month = searchParams.get('month') || '2026-10';
+    const month = searchParams.get('month') || undefined;
     const search = searchParams.get('search')?.trim();
 
     // 1. Fetch Units
@@ -274,7 +274,6 @@ export async function GET(req: NextRequest) {
       lineSummary,
     });
   } catch (error: any) {
-    console.error('Failed to load Editor data:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Internal Server Error' },
       { status: 500 }
@@ -289,7 +288,7 @@ export async function POST(req: NextRequest) {
       lineId,
       lineName,
       unitCode,
-      month = '2026-10',
+      month,
       batchId = 'ALL',
       lineSettings,
       orders = [],
@@ -704,7 +703,6 @@ export async function POST(req: NextRequest) {
       ordersCount: processedOrderIds.length,
     });
   } catch (error: any) {
-    console.error('Failed to save Editor updates:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Internal Server Error' },
       { status: 500 }

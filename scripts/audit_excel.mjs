@@ -6,8 +6,6 @@ function auditExcelFile() {
   const sheet = workbook.Sheets['Birichina'];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-  console.log(`=== AUDITING ORIGINAL EXCEL FILE: "${filePath}" ===`);
-  console.log(`Total Excel Rows: ${rows.length}`);
 
   const header = rows[0];
   const dateCols = [];
@@ -18,7 +16,6 @@ function auditExcelFile() {
     }
   }
 
-  console.log(`Detected Date Columns: ${dateCols.length} dates (${dateCols[0].dateStr} to ${dateCols[dateCols.length - 1].dateStr})`);
 
   const lines = new Map(); // lineName -> { unit, target, actual, targetSah, actualSah, rows, styles }
   const units = new Map(); // unitCode -> { target, actual, lines: Set, targetSah, actualSah }
@@ -144,29 +141,13 @@ function auditExcelFile() {
     totalClockHours += clockHours;
   }
 
-  console.log(`\n1. Valid Style/Order Rows: ${validOrderRows}`);
-  console.log(`2. Unique Buyers: ${buyers.size} (${Array.from(buyers).join(', ')})`);
-  console.log(`3. Unique Physical Lines: ${lines.size}`);
   
-  console.log(`\nLines Breakdown by Unit:`);
   for (const [uCode, uObj] of units.entries()) {
-    console.log(`   - Unit ${uCode}: ${uObj.lines.size} unique lines`);
   }
 
-  console.log(`\n4. Overall Totals:`);
-  console.log(`   - Total Planned Production: ${totalPlannedPcs.toLocaleString()} pcs`);
-  console.log(`   - Total Actual Production:  ${totalActualPcs.toLocaleString()} pcs`);
-  console.log(`   - Production Gap:           ${(totalPlannedPcs - totalActualPcs).toLocaleString()} pcs`);
-  console.log(`   - Target Achievement Rate:  ${((totalActualPcs / totalPlannedPcs) * 100).toFixed(1)}%`);
-  console.log(`   - Total Target SAH:         ${totalTargetSah.toFixed(2)} hrs`);
-  console.log(`   - Total Actual SAH:         ${totalActualSah.toFixed(2)} hrs`);
-  console.log(`   - Total Clock Hours:        ${totalClockHours.toLocaleString()} hrs`);
-  console.log(`   - Efficiency %:             ${((totalActualSah / totalClockHours) * 100).toFixed(1)}%`);
 
-  console.log(`\n5. Unit-wise Breakdown:`);
   for (const [uCode, uObj] of units.entries()) {
     const ach = ((uObj.actual / uObj.target) * 100).toFixed(1);
-    console.log(`   - Unit [${uCode}]: Planned = ${uObj.target.toLocaleString()} pcs | Actual = ${uObj.actual.toLocaleString()} pcs | Achievement = ${ach}%`);
   }
 }
 

@@ -21,7 +21,6 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (err: any) {
-    console.error('Line Details API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to fetch line details' }, { status: 500 });
   }
 }

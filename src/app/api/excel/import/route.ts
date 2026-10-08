@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error('Import API Error:', err);
     return NextResponse.json({ error: err.message || 'Failed to process Excel import' }, { status: 500 });
   }
 }

@@ -5,14 +5,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('=== 1. ANALYZING Birichina- Month of October Sign off Production Plan- 26th October.xlsx ===');
   const birichinaPath = path.resolve('Birichina- Month of October Sign off Production Plan- 26th October.xlsx');
   const buf1 = fs.readFileSync(birichinaPath);
   const wb1 = XLSX.read(buf1, { type: 'buffer' });
-  console.log('Sheet names:', wb1.SheetNames);
   const sheet1 = wb1.Sheets[wb1.SheetNames[0]];
   const rows1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
-  console.log('Total rows in Birichina sheet:', rows1.length);
 
   const headerRow = rows1[0];
 
@@ -31,7 +28,6 @@ async function main() {
       dateCols.push(c);
     }
   }
-  console.log('Date columns count:', dateCols.length);
 
   for (let i = 1; i < rows1.length; i++) {
     const row = rows1[i];
@@ -63,33 +59,22 @@ async function main() {
     }
   }
 
-  console.log('Birichina Unique Lines Count:', birichinaLines.size);
-  console.log('Unit Breakdown:', {
     B2: unitLines.B2.size,
     U02: unitLines.U02.size,
     U03: unitLines.U03.size,
     U04: unitLines.U04.size,
     OTHER: unitLines.OTHER.size,
   });
-  console.log('Valid Order Rows:', validOrderRowCount);
-  console.log('Total Col 17 (Order Qty):', totalCol17_OrderQty.toLocaleString());
-  console.log('Total Col 34 (Plan Qty):', totalCol34_PlanQty.toLocaleString());
-  console.log('Total Daily Target Sum (Days 1-31):', totalDailyTargetSum.toLocaleString());
 
-  console.log('\n=== 2. ANALYZING Production_lines_2026-09-27.xlsx ===');
   try {
     const prodPath = path.resolve('Production_lines_2026-09-27.xlsx');
     const buf2 = fs.readFileSync(prodPath);
     const wb2 = XLSX.read(buf2, { type: 'buffer' });
-    console.log('Sheet names in exported file:', wb2.SheetNames);
     const sheet2 = wb2.Sheets[wb2.SheetNames[0]];
     const rows2 = XLSX.utils.sheet_to_json(sheet2);
-    console.log('Total rows in exported file:', rows2.length);
     if (rows2.length > 0) {
-      console.log('Sample row in exported file:', rows2[0]);
     }
     const exportLines = new Set(rows2.map(r => r['Line'] || r['Line Name'] || r['lineName'] || Object.values(r)[0]));
-    console.log('Exported Unique Lines Count:', exportLines.size);
     
     // Sum Target Qty & Actual Qty in exported file
     let expTargetSum = 0;
@@ -100,43 +85,29 @@ async function main() {
       expTargetSum += tgt;
       expActualSum += act;
     }
-    console.log('Exported Total Target Sum:', expTargetSum.toLocaleString());
-    console.log('Exported Total Actual Sum:', expActualSum.toLocaleString());
 
     // Check which 23 lines are in exported file but not in Birichina
     const extraLines = [...exportLines].filter(l => !birichinaLines.has(l));
-    console.log('Extra lines count in exported file:', extraLines.length);
-    console.log('Extra lines:', extraLines);
   } catch (e) {
-    console.log('Could not read Production_lines_2026-09-27.xlsx:', e.message);
   }
 
-  console.log('\n=== 3. ANALYZING CURRENT DATABASE STATE ===');
   const dbLines = await prisma.productionLine.findMany();
-  console.log('DB Lines total count in database:', dbLines.length);
 
   const dbOrders = await prisma.order.count();
-  console.log('DB Orders total count:', dbOrders);
 
   const dbDaily = await prisma.productionDaily.count();
-  console.log('DB Daily total count:', dbDaily);
 
   const dbOrderSums = await prisma.order.aggregate({
     _sum: { orderQty: true, planQty: true }
   });
-  console.log('DB Order Qty Sum:', dbOrderSums._sum.orderQty?.toLocaleString());
-  console.log('DB Plan Qty Sum:', dbOrderSums._sum.planQty?.toLocaleString());
 
   const dbDailySums = await prisma.productionDaily.aggregate({
     _sum: { targetQty: true, actualQty: true, gap: true, targetSah: true, actualSah: true, clockHours: true }
   });
-  console.log('DB Daily Target Qty Sum:', dbDailySums._sum.targetQty?.toLocaleString());
-  console.log('DB Daily Actual Qty Sum:', dbDailySums._sum.actualQty?.toLocaleString());
 
   const batches = await prisma.importBatch.findMany();
-  console.log('DB Batches:', batches);
 
   await prisma.$disconnect();
 }
 
-main().catch(console.error);
+main().catch(() => {});

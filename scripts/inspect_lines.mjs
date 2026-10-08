@@ -9,7 +9,6 @@ async function inspectLines() {
   const sheet = workbook.Sheets['Birichina'];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-  console.log(`Excel Total Rows: ${rows.length}`);
 
   const excelLines = new Map(); // lineName -> { unit, rowsCount, totalTarget }
   const dateCols = [];
@@ -58,7 +57,6 @@ async function inspectLines() {
     }
   }
 
-  console.log(`\nDistinct Line Strings in Column A of Excel: ${excelLines.size}`);
 
   const linesWithTarget = [];
   const linesZeroTarget = [];
@@ -71,10 +69,7 @@ async function inspectLines() {
     }
   }
 
-  console.log(`Lines with Target > 0: ${linesWithTarget.length}`);
-  console.log(`Lines with Target == 0: ${linesZeroTarget.length}`);
 
-  console.log('\nBreakdown of Lines with Target > 0 by Unit:');
   const unitBreakdown = {};
   for (const l of linesWithTarget) {
     let u = l.rawUnit;
@@ -84,9 +79,7 @@ async function inspectLines() {
     else if (l.rawLine.startsWith('B2')) u = 'B2';
     unitBreakdown[u] = (unitBreakdown[u] || 0) + 1;
   }
-  console.log(unitBreakdown);
 
-  console.log('\nBreakdown of ALL 136 Line Strings by Unit:');
   const allUnitBreakdown = {};
   for (const l of excelLines.values()) {
     let u = l.rawUnit;
@@ -96,15 +89,11 @@ async function inspectLines() {
     else if (l.rawLine.startsWith('B2')) u = 'B2';
     allUnitBreakdown[u] = (allUnitBreakdown[u] || 0) + 1;
   }
-  console.log(allUnitBreakdown);
 
-  console.log('\nLines with Target == 0 (Empty / Placeholder / Unassigned / Inactive lines):');
   linesZeroTarget.forEach(l => {
-    console.log(`   - "${l.rawLine}" (Unit: ${l.rawUnit}, rows: ${l.rowsCount}, hasPlanDays: ${l.hasPlanDays})`);
   });
 
   const dbLines = await prisma.productionLine.findMany();
-  console.log(`\nDB Total Lines: ${dbLines.length}`);
 }
 
-inspectLines().catch(console.error).finally(() => prisma.$disconnect());
+inspectLines().catch(() => {}).finally(() => prisma.$disconnect());
