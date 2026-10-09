@@ -136,6 +136,14 @@ export function ManagementSummary({
               <span className="text-slate-500">Total Active Lines:</span>
               <span className="font-bold text-slate-900 dark:text-slate-100">{kpis.totalActiveLines} lines</span>
             </div>
+            <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+              <span className="text-slate-500">Production Plan Lines:</span>
+              <span className="font-bold text-indigo-600 dark:text-indigo-400 font-mono">{kpis.totalPlannedLines ?? kpis.totalActiveLines} lines</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+              <span className="text-slate-500">Actual Production Lines:</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{kpis.totalActualLines ?? 0} lines</span>
+            </div>
             <div className="flex justify-between py-1">
               <span className="text-slate-500">Average Operators / Line:</span>
               <span className="font-bold text-slate-900 dark:text-slate-100">

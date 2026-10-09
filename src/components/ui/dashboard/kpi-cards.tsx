@@ -30,6 +30,8 @@ interface KpiData {
   highestLineEfficiency: number;
   lowestLineEfficiency: number;
   totalActiveLines: number;
+  totalPlannedLines?: number;
+  totalActualLines?: number;
   totalRegisteredLines: number;
   totalManpower: number;
   totalSAH: number;
@@ -61,193 +63,123 @@ export function KpiCards({ data, onCardClick }: KpiCardsProps) {
       title: "Total Order Quantity",
       value: formatNumber(data.totalOrderQty),
       rawVal: data.totalOrderQty.toLocaleString() + " pcs",
-      subtitle: `${data.totalOrders.toLocaleString()} active orders`,
-      icon: ShoppingBag,
+      gradient: "from-blue-500/10 via-sky-500/5 to-white dark:from-blue-950/40 dark:via-sky-950/20 dark:to-slate-900 border-blue-200/80 hover:border-blue-400",
       accent: "text-blue-600 dark:text-blue-400",
-      iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400",
-      badgeBg: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800",
-      topBorder: "hover:border-blue-300 dark:hover:border-blue-700",
-      trend: "Confirmed",
-      trendPositive: true
     },
     {
       id: "planned-production",
       title: "Total Planned Target",
       value: formatNumber(data.totalPlannedProduction),
       rawVal: data.totalPlannedProduction.toLocaleString() + " pcs",
-      subtitle: "Month Sign-off Plan",
-      icon: CalendarCheck,
+      gradient: "from-indigo-500/10 via-purple-500/5 to-white dark:from-indigo-950/40 dark:via-purple-950/20 dark:to-slate-900 border-indigo-200/80 hover:border-indigo-400",
       accent: "text-indigo-600 dark:text-indigo-400",
-      iconBg: "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400",
-      badgeBg: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
-      topBorder: "hover:border-indigo-300 dark:hover:border-indigo-700",
-      trend: "Plan Target",
-      trendPositive: true
     },
     {
       id: "actual-production",
       title: "Actual Floor Output",
       value: formatNumber(data.totalActualProduction),
       rawVal: data.totalActualProduction.toLocaleString() + " pcs",
-      subtitle: `Plan: ${formatNumber(data.totalPlannedProduction)}`,
-      icon: CheckCircle2,
+      gradient: "from-emerald-500/10 via-teal-500/5 to-white dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 border-emerald-200/80 hover:border-emerald-400",
       accent: "text-emerald-600 dark:text-emerald-400",
-      iconBg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400",
-      badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
-      topBorder: "hover:border-emerald-300 dark:hover:border-emerald-700",
-      trend: `${data.targetAchievementRate}% achieved`,
-      trendPositive: data.targetAchievementRate >= 80
     },
     {
       id: "target-achievement",
       title: "Plan Achievement Rate",
       value: `${data.targetAchievementRate}%`,
       rawVal: `${data.targetAchievementRate}%`,
-      subtitle: "Actual / Target output",
-      icon: Target,
-      accent: data.targetAchievementRate >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
-      iconBg: data.targetAchievementRate >= 80 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400" : "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400",
-      badgeBg: data.targetAchievementRate >= 80 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
-      topBorder: "hover:border-emerald-300 dark:hover:border-emerald-700",
-      trend: data.targetAchievementRate >= 85 ? "On Track" : "In Progress",
-      trendPositive: data.targetAchievementRate >= 80
+      gradient: "from-amber-500/10 via-orange-500/5 to-white dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900 border-amber-200/80 hover:border-amber-400",
+      accent: "text-amber-600 dark:text-amber-400",
     },
     {
       id: "average-efficiency",
       title: "Average Efficiency",
       value: `${data.averageEfficiency}%`,
       rawVal: `${data.averageEfficiency}%`,
-      subtitle: `Target: 80% Benchmark`,
-      icon: TrendingUp,
-      accent: data.averageEfficiency >= 70 ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400",
-      iconBg: data.averageEfficiency >= 70 ? "bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400" : "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400",
-      badgeBg: data.averageEfficiency >= 70 ? "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800" : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
-      topBorder: "hover:border-teal-300 dark:hover:border-teal-700",
-      trend: data.averageEfficiency >= 80 ? "On Target" : "Plan Baseline",
-      trendPositive: data.averageEfficiency >= 70
+      gradient: "from-teal-500/10 via-cyan-500/5 to-white dark:from-teal-950/40 dark:via-cyan-950/20 dark:to-slate-900 border-teal-200/80 hover:border-teal-400",
+      accent: "text-teal-600 dark:text-teal-400",
     },
     {
       id: "target-sah",
       title: "Planned SAH (Hours)",
       value: formatNumber(data.targetSAH || data.totalSAH),
       rawVal: `${(data.targetSAH || data.totalSAH).toLocaleString()} SAH`,
-      subtitle: `${formatNumber(data.totalClockHours || 820082)} Machine Hrs`,
-      icon: Clock,
+      gradient: "from-purple-500/10 via-violet-500/5 to-white dark:from-purple-950/40 dark:via-violet-950/20 dark:to-slate-900 border-purple-200/80 hover:border-purple-400",
       accent: "text-purple-600 dark:text-purple-400",
-      iconBg: "bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400",
-      badgeBg: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800",
-      topBorder: "hover:border-purple-300 dark:hover:border-purple-700",
-      trend: "Std Allowed",
-      trendPositive: true
     },
     {
       id: "highest-efficiency",
       title: "Highest Line Eff",
       value: `${data.highestLineEfficiency}%`,
       rawVal: `${data.highestLineEfficiency}%`,
-      subtitle: "Top performing line",
-      icon: Award,
+      gradient: "from-teal-500/10 via-emerald-500/5 to-white dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-slate-900 border-teal-200/80 hover:border-teal-400",
       accent: "text-teal-600 dark:text-teal-400",
-      iconBg: "bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400",
-      badgeBg: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800",
-      topBorder: "hover:border-teal-300 dark:hover:border-teal-700",
-      trend: "Peak Output",
-      trendPositive: true
     },
     {
       id: "lowest-efficiency",
       title: "Lowest Line Eff",
       value: `${data.lowestLineEfficiency}%`,
       rawVal: `${data.lowestLineEfficiency}%`,
-      subtitle: "Supervision needed",
-      icon: AlertOctagon,
+      gradient: "from-rose-500/10 via-red-500/5 to-white dark:from-rose-950/40 dark:via-red-950/20 dark:to-slate-900 border-rose-200/80 hover:border-rose-400",
       accent: "text-rose-600 dark:text-rose-400",
-      iconBg: "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400",
-      badgeBg: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
-      topBorder: "hover:border-rose-300 dark:hover:border-rose-700",
-      trend: "Bottleneck",
-      trendPositive: false
     },
     {
       id: "production-lines",
       title: "Total Active Lines",
       value: data.totalActiveLines.toString(),
       rawVal: `${data.totalActiveLines} Lines`,
-      subtitle: `Of ${data.totalRegisteredLines || 200} lines`,
-      icon: Layers,
+      gradient: "from-cyan-500/10 via-sky-500/5 to-white dark:from-cyan-950/40 dark:via-sky-950/20 dark:to-slate-900 border-cyan-200/80 hover:border-cyan-400",
       accent: "text-cyan-600 dark:text-cyan-400",
-      iconBg: "bg-cyan-50 text-cyan-600 dark:bg-cyan-950/60 dark:text-cyan-400",
-      badgeBg: "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800",
-      topBorder: "hover:border-cyan-300 dark:hover:border-cyan-700",
-      trend: "Operational",
-      trendPositive: true
+    },
+    {
+      id: "plan-lines",
+      title: "Production Plan Lines",
+      value: (data.totalPlannedLines !== undefined ? data.totalPlannedLines : data.totalActiveLines).toString(),
+      rawVal: `${data.totalPlannedLines !== undefined ? data.totalPlannedLines : data.totalActiveLines} Lines Planned`,
+      gradient: "from-indigo-500/10 via-blue-500/5 to-white dark:from-indigo-950/40 dark:via-blue-950/20 dark:to-slate-900 border-indigo-200/80 hover:border-indigo-400",
+      accent: "text-indigo-600 dark:text-indigo-400",
+    },
+    {
+      id: "actual-lines",
+      title: "Actual Production Lines",
+      value: (data.totalActualLines !== undefined ? data.totalActualLines : 0).toString(),
+      rawVal: `${data.totalActualLines !== undefined ? data.totalActualLines : 0} Floor Lines`,
+      gradient: "from-emerald-500/10 via-green-500/5 to-white dark:from-emerald-950/40 dark:via-green-950/20 dark:to-slate-900 border-emerald-200/80 hover:border-emerald-400",
+      accent: "text-emerald-600 dark:text-emerald-400",
     },
     {
       id: "total-manpower",
       title: "Total Manpower",
       value: data.totalManpower.toLocaleString(),
       rawVal: `${data.totalManpower.toLocaleString()} Operators`,
-      subtitle: data.totalActiveLines > 0
-        ? `Avg ${(data.totalManpower / data.totalActiveLines).toFixed(1)} / line`
-        : "Floor operators",
-      icon: Users,
+      gradient: "from-blue-500/10 via-indigo-500/5 to-white dark:from-blue-950/40 dark:via-indigo-950/20 dark:to-slate-900 border-blue-200/80 hover:border-blue-400",
       accent: "text-blue-600 dark:text-blue-400",
-      iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400",
-      badgeBg: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800",
-      topBorder: "hover:border-blue-300 dark:hover:border-blue-700",
-      trend: "Capacity",
-      trendPositive: true
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
       {cards.map((card) => {
-        const Icon = card.icon;
         return (
           <Card
             key={card.id}
             onClick={() => onCardClick?.(card.id)}
             className={cn(
-              "group relative cursor-pointer overflow-hidden rounded-xl border border-slate-200/90 bg-white p-3 sm:p-3.5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900",
-              card.topBorder
+              "group relative cursor-pointer overflow-hidden rounded-lg border bg-gradient-to-br p-2 sm:px-2.5 sm:py-2 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm",
+              card.gradient
             )}
           >
-            <CardContent className="p-0">
-              {/* Top Row: Title & Mini Icon */}
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 leading-tight">
+            <CardContent className="p-0 sm:p-2 flex flex-col justify-between h-full">
+              {/* Top Row: Title (Full 2 lines) */}
+              <div className="flex items-start w-full min-h-[28px]">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 leading-tight line-clamp-2">
                   {card.title}
                 </span>
-                <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-2xs transition-transform duration-200 group-hover:scale-105", card.iconBg)}>
-                  <Icon className="h-3.5 w-3.5" />
-                </div>
               </div>
 
-              {/* Main Metric Value (Clean, Well-sized, Not oversized) */}
-              <div className="mt-2.5">
-                <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-slate-900 dark:text-slate-50">
+              {/* Main Metric Value */}
+              <div className="mt-1">
+                <div className={cn("text-lg sm:text-xl font-bold font-mono tracking-tight leading-none text-slate-900 dark:text-slate-50")}>
                   {card.value}
-                </div>
-
-                {/* Bottom Row: Subtitle & Compact Status Badge */}
-                <div className="mt-2 flex items-center justify-between gap-1 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 text-[10px]">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium truncate" title={card.subtitle}>
-                    {card.subtitle}
-                  </span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center font-semibold px-1.5 py-0.5 rounded border shrink-0",
-                      card.badgeBg
-                    )}
-                  >
-                    {card.trendPositive ? (
-                      <ArrowUpRight className="h-2.5 w-2.5 mr-0.5" />
-                    ) : (
-                      <ArrowDownRight className="h-2.5 w-2.5 mr-0.5" />
-                    )}
-                    {card.trend}
-                  </span>
                 </div>
               </div>
             </CardContent>

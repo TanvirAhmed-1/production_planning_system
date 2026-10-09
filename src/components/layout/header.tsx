@@ -186,20 +186,8 @@ export function Header({
           <Settings className="h-4 w-4" />
         </button>
 
-        {/* User Role Status & Logout */}
+        {/* Logout */}
         <div className="flex items-center gap-1 sm:gap-1.5 pl-1 sm:pl-1.5 border-l border-slate-200 dark:border-slate-800">
-          {currentUser?.role === 'SUPER_ADMIN' ? (
-            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 font-bold text-[10px] hidden md:inline-flex items-center gap-1 py-1">
-              <ShieldAlert className="h-3 w-3 text-purple-600" />
-              {currentUser.name || 'Super Admin'}
-            </Badge>
-          ) : currentUser ? (
-            <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-200 font-bold text-[10px] hidden md:inline-flex items-center gap-1 py-1">
-              <UserCheck className="h-3 w-3 text-sky-600" />
-              {currentUser.name || currentUser.role}
-            </Badge>
-          ) : null}
-
           <Button
             variant="ghost"
             size="sm"

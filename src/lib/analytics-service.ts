@@ -261,6 +261,8 @@ export async function getDashboardData(filters: FilterParams = {}) {
   const linesInfoMap = new Map(linesInfo.map(l => [l.id, l]));
 
   const totalActiveLines = linesInfo.length;
+  const totalPlannedLines = lineStats.filter(s => (s._sum.targetQty || 0) > 0).length || totalActiveLines;
+  const totalActualLines = lineStats.filter(s => (s._sum.actualQty || 0) > 0).length;
   const totalManpower = linesInfo.reduce((acc, l) => acc + (l.manpower || 25), 0);
 
   const linesManpowerAgg = await prisma.productionLine.aggregate({
@@ -490,6 +492,8 @@ export async function getDashboardData(filters: FilterParams = {}) {
       highestLineEfficiency,
       lowestLineEfficiency,
       totalActiveLines,
+      totalPlannedLines,
+      totalActualLines,
       totalRegisteredLines,
       totalManpower,
       totalSAH: Number(totalTargetSah.toFixed(1)),

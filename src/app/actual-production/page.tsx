@@ -210,6 +210,44 @@ export default function ActualProductionDetailsPage() {
     document.body.removeChild(link);
   };
 
+  if (loading && !data) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 shadow-xs dark:border-slate-800 dark:bg-slate-900/95">
+          <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/?tab=line-performance")}
+                className="h-8 gap-1.5 text-xs font-semibold"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to Line Performance</span>
+              </Button>
+              <span className="font-semibold text-sky-600 dark:text-sky-400 text-sm">Actual Production Details</span>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <div className="relative flex items-center justify-center">
+            <div className="h-14 w-14 rounded-full border-4 border-emerald-500/20 border-t-emerald-600 animate-spin" />
+            <Radio className="absolute h-6 w-6 text-emerald-600 animate-pulse" />
+          </div>
+          <div className="text-center space-y-1">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Loading Actual Production Floor Data...
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Fetching active batches, unit & line performance matrices...
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans">
       {/* Top Header Bar */}
@@ -245,11 +283,12 @@ export default function ActualProductionDetailsPage() {
             <Button
               variant="outline"
               size="sm"
+              disabled={loading}
               onClick={() => fetchData(selectedBatchId)}
               className="h-8 gap-1.5 text-xs font-semibold border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              <span>Refresh</span>
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-emerald-600" : ""}`} />
+              <span>{loading ? "Refreshing..." : "Refresh"}</span>
             </Button>
 
             <Button
@@ -266,7 +305,16 @@ export default function ActualProductionDetailsPage() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-5 lg:p-6 space-y-3.5">
+      <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-5 lg:p-6 space-y-3.5 relative">
+        {/* Subtle loading overlay if refreshing with existing data */}
+        {loading && data && (
+          <div className="absolute inset-0 bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px] z-20 flex items-start justify-center pt-20">
+            <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 flex items-center gap-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
+              <RefreshCw className="h-4 w-4 animate-spin text-emerald-600" />
+              <span>Updating floor metrics...</span>
+            </div>
+          </div>
+        )}
         {/* Compact Executive Active Actual Production Strip / Banner */}
         <div className="relative overflow-hidden rounded-xl border border-slate-200/90 bg-gradient-to-r from-emerald-50/60 via-white to-sky-50/30 p-3 sm:p-3.5 shadow-xs dark:border-slate-800 dark:from-slate-900 dark:via-slate-900/95 dark:to-emerald-950/20">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
