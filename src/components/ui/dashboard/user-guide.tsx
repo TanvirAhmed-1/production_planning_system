@@ -303,13 +303,16 @@ export function UserGuide({ onNavigateTab }: UserGuideProps) {
                   ১. <strong>সর্বপ্রথম মূল Production Plan (.xlsx)</strong> ফাইলটি Excel Upload-এ আপলোড করে ডাটাবেজ তৈরি করে নিতে হবে।
                 </p>
                 <p>
-                  ২. <strong>Actual Production Plan (.xlsb)</strong> ফাইলটি অবশ্যই <strong>Excel Upload ফিল্ডেই</strong> সংশ্লিষ্ট <strong>Production Plan-এর অধীনে (Under Parent Plan)</strong> আপলোড করতে হবে।
+                  ২. <strong>Actual Production Plan (.xlsx / .xlsb)</strong> ফাইলটি অবশ্যই <strong>Excel Upload ফিল্ডেই</strong> সংশ্লিষ্ট <strong>Production Plan-এর অধীনে (Under Parent Plan)</strong> আপলোড করতে হবে।
                 </p>
                 <p>
-                  ৩. কোনো Production Plan ছাড়া আলাদাভাবে Actual Plan আপলোড করা যাবে না — কারণ একচুয়াল ফ্লোর আউটপুট স্বয়ংক্রিয়ভাবে মূল প্ল্যানের লাইন ও টার্গেটের সাথে লিংক হয়ে ভ্যারিয়েন্স ও এফিশিয়েন্সি হিসাব করে।
+                  ৩. <strong>গুরুত্বপূর্ণ (Sheets Must Be Unhidden):</strong> Production Plan এবং Actual Production ফাইল আপলোড করার পূর্বে নিশ্চিত করুন যে <strong>মূল ডাটা শিটগুলো Unhidden (দৃশ্যমান) অবস্থায় রয়েছে</strong>। এক্সেলে কোনো শিট Hidden বা লুকানো থাকলে সিস্টেম তা সঠিকভাবে রিড বা প্রসেস করতে পারবে না।
                 </p>
                 <p>
-                  ৪. <strong>অটোমেটিক রিরাইট ও ডাটা আপডেট (Auto-Overwrite):</strong> যদি কোনো Production Plan-এর অধীনে আগে থেকেই Actual Production ডাটা থাকে এবং পরবর্তীতে নতুন Actual ফাইল আপলোড করা হয়, তবে <strong>যে যে তারিখের ডাটা নতুন ফাইলে রয়েছে, পূর্বের ফাইলের ঐ নির্দিষ্ট তারিখগুলোর ডাটা স্বয়ংক্রিয়ভাবে মুছে নতুন ডাটা দিয়ে রিরাইট/আপডেট হয়ে যাবে</strong>। কোনো ডুপ্লিকেট বা ভুল যোগফল হবে না।
+                  ৪. কোনো Production Plan ছাড়া আলাদাভাবে Actual Plan আপলোড করা যাবে না — কারণ একচুয়াল ফ্লোর আউটপুট স্বয়ংক্রিয়ভাবে মূল প্ল্যানের লাইন ও টার্গেটের সাথে লিংক হয়ে ভ্যারিয়েন্স ও এফিশিয়েন্সি হিসাব করে।
+                </p>
+                <p>
+                  ৫. <strong>অটোমেটিক রিরাইট ও ডাটা আপডেট (Auto-Overwrite):</strong> যদি কোনো Production Plan-এর অধীনে আগে থেকেই Actual Production ডাটা থাকে এবং পরবর্তীতে নতুন Actual ফাইল আপলোড করা হয়, তবে <strong>যে যে তারিখের ডাটা নতুন ফাইলে রয়েছে, পূর্বের ফাইলের ঐ নির্দিষ্ট তারিখগুলোর ডাটা স্বয়ংক্রিয়ভাবে মুছে নতুন ডাটা দিয়ে রিরাইট/আপডেট হয়ে যাবে</strong>। কোনো ডুপ্লিকেট বা ভুল যোগফল হবে না।
                 </p>
               </div>
             </div>
@@ -320,11 +323,11 @@ export function UserGuide({ onNavigateTab }: UserGuideProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300">
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span><strong>১. Production Plan (.xlsx):</strong> মাসিক সাইন-অফ প্ল্যান শিট (মাস্টার ডাটা)</span>
+                  <span><strong>১. Production Plan (.xlsx):</strong> মাসিক সাইন-অফ প্ল্যান শিট (Unhidden অবস্থায় থাকতে হবে)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0" />
-                  <span><strong>২. Actual Production (.xlsb):</strong> প্ল্যানের অধীনে ফ্লোর আউটপুট শিট</span>
+                  <span><strong>২. Actual Production (.xlsx / .xlsb):</strong> প্ল্যানের অধীনে ফ্লোর আউটপুট শিট (Unhidden)</span>
                 </div>
               </div>
             </div>

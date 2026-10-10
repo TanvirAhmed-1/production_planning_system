@@ -82,25 +82,43 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
     }
   }, [isOpen, loadPlans]);
 
+  const validateFile = (selectedFile: File): boolean => {
+    const lowerName = selectedFile.name.toLowerCase();
+    if (activeMode === 'ACTUAL') {
+      if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.xlsb')) {
+        return true;
+      }
+      setErrorMsg('Please select a valid Actual Tracker file (.xlsx, .xls, or .xlsb)');
+      return false;
+    } else {
+      if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+        return true;
+      }
+      setErrorMsg('Production Plan only accepts standard Excel files (.xlsx or .xls). .xlsb is not supported for plans.');
+      return false;
+    }
+  };
+
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls')) {
+      if (validateFile(droppedFile)) {
         setFile(droppedFile);
         setErrorMsg(null);
         setImportResult(null);
-      } else {
-        setErrorMsg('Please select a valid Excel file (.xlsx or .xls)');
       }
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setErrorMsg(null);
-      setImportResult(null);
+      const selectedFile = e.target.files[0];
+      if (validateFile(selectedFile)) {
+        setFile(selectedFile);
+        setErrorMsg(null);
+        setImportResult(null);
+      }
     }
   };
 
@@ -136,10 +154,17 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
       });
 
       clearTimeout(stepTimer);
-      const data = await res.json();
+
+      let data: any = null;
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { error: text || `Server error (${res.status} ${res.statusText})` };
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to import Excel file');
+        throw new Error(data?.error || `Failed to import Excel file (${res.status} ${res.statusText})`);
       }
 
       setImportResult(data);
@@ -317,7 +342,7 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
                   <input
                     id="excel-file-input"
                     type="file"
-                    accept=".xlsx, .xls"
+                    accept={activeMode === "ACTUAL" ? ".xlsx, .xls, .xlsb" : ".xlsx, .xls"}
                     className="hidden"
                     onChange={handleFileSelect}
                   />
@@ -341,12 +366,12 @@ export function ExcelImportModal({ isOpen, onClose, onImportSuccess }: ExcelImpo
                   ) : (
                     <div>
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        Drag & Drop {activeMode === "ACTUAL" ? "Actual Floor Tracker Excel (e.g. Untitled spreadsheet.xlsx)" : "Plan Excel (e.g. Sign off Plan.xlsx)"} here, or <span className="text-sky-600 dark:text-sky-400 underline">Browse</span>
+                        Drag & Drop {activeMode === "ACTUAL" ? "Actual Floor Tracker Excel (.xlsx / .xlsb)" : "Plan Excel (.xlsx)"} here, or <span className="text-sky-600 dark:text-sky-400 underline">Browse</span>
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
                         {activeMode === "ACTUAL"
-                          ? "Matches Date, Cluster (B1, B2), Unit, Line, Pcs, MO, Eff%"
-                          : "Extracts Line Targets, Styles, Buyers, OCs, SMV, Working Days"}
+                          ? "Supports .xlsx, .xls, .xlsb • Ensure sheets are Unhidden • Matches Date, Cluster, Unit, Line, Pcs, MO"
+                          : "Supports .xlsx, .xls • Ensure master sheet is Unhidden • Extracts Line Targets, Styles, Buyers, OCs"}
                       </p>
                     </div>
                   )}

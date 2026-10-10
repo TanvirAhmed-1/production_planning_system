@@ -600,46 +600,58 @@ export function DateDetailsView({ initialDate = "2026-10-01", onBack, onSelectLi
           </Card>
 
           {/* Line-by-Line Comprehensive Production Matrix Table */}
-          <Card className="border-slate-200 bg-white shadow-xs rounded-2xl overflow-hidden">
-            <CardHeader className="p-3.5 sm:p-5 pb-3 border-b border-slate-100 flex items-start sm:items-center justify-between gap-2.5">
+          <Card className="border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md rounded-2xl overflow-hidden ring-1 ring-slate-100 dark:ring-slate-800">
+            <CardHeader className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-b border-indigo-900/50 flex flex-row items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <CardTitle className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-indigo-600 shrink-0" />
-                  <span className="truncate">Line-Level Breakdown ({filteredLines.length} Lines)</span>
+                <CardTitle className="text-base sm:text-lg font-bold text-white flex items-center gap-2.5 tracking-tight">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                    <Layers className="h-4 w-4" />
+                  </div>
+                  <span>Line-Level Breakdown</span>
+                  <Badge className="bg-indigo-500/20 text-indigo-200 border-indigo-400/30 font-mono text-xs px-2 py-0.5">
+                    {filteredLines.length} Lines
+                  </Badge>
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500 mt-0.5 line-clamp-1 sm:line-clamp-none">
-                  Comparison of Planned Target vs Actual Floor Output on {selectedDate}
+                <CardDescription className="text-xs text-indigo-200/80 mt-1 flex items-center gap-1.5">
+                  <span>Comparison of Planned Target vs Actual Floor Output on</span>
+                  <span className="font-mono font-semibold text-white bg-white/10 px-1.5 py-0.5 rounded text-[11px]">{selectedDate}</span>
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="text-[11px] sm:text-xs border-slate-200 text-slate-600 font-mono shrink-0 whitespace-nowrap self-start sm:self-auto">
-                {filteredLines.length} / {data?.lines?.length || 0} Lines
-              </Badge>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-indigo-200 font-mono bg-indigo-900/60 border border-indigo-700/50 px-3 py-1 rounded-lg">
+                  Showing: <strong className="text-white">{filteredLines.length}</strong> / {data?.lines?.length || 0}
+                </span>
+              </div>
             </CardHeader>
 
             <CardContent className="p-0">
-              <div className="overflow-x-auto max-h-[600px] overflow-y-auto custom-scrollbar">
+              <div className="overflow-x-auto max-h-[650px] overflow-y-auto custom-scrollbar">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-md text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="py-2.5 px-3">Unit</th>
-                      <th className="py-2.5 px-3">Line Name</th>
-                      <th className="py-2.5 px-3">Buyer & Style</th>
-                      <th className="py-2.5 px-3">OC / PO</th>
-                      <th className="py-2.5 px-3 text-center">SMV</th>
-                      <th className="py-2.5 px-3 text-center">MO</th>
-                      <th className="py-2.5 px-3 text-right">Plan Target</th>
-                      <th className="py-2.5 px-3 text-right">Actual Output</th>
-                      <th className="py-2.5 px-3 text-right">Variance</th>
-                      <th className="py-2.5 px-3 text-center">Achieved</th>
-                      <th className="py-2.5 px-3 text-center">Efficiency</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
+                  <thead className="sticky top-0 z-20 bg-slate-900 text-slate-200 text-[11px] uppercase tracking-wider font-bold shadow-sm">
+                    <tr className="border-b border-slate-700 divide-x divide-slate-800">
+                      <th className="py-3 px-3.5 text-center w-16 bg-slate-900">Unit</th>
+                      <th className="py-3 px-4 min-w-[130px] bg-slate-900">Line Name</th>
+                      <th className="py-3 px-4 min-w-[180px] bg-slate-900">Buyer & Style</th>
+                      <th className="py-3 px-3 text-center min-w-[100px] bg-slate-900">OC / PO</th>
+                      <th className="py-3 px-3 text-center w-16 bg-slate-900">SMV</th>
+                      <th className="py-3 px-3 text-center w-14 bg-slate-900">MO</th>
+                      <th className="py-3 px-4 text-right min-w-[105px] bg-slate-900 text-indigo-200">Plan Target</th>
+                      <th className="py-3 px-4 text-right min-w-[110px] bg-slate-900 text-emerald-300">Actual Output</th>
+                      <th className="py-3 px-3 text-right min-w-[95px] bg-slate-900">Variance</th>
+                      <th className="py-3 px-3 text-center min-w-[100px] bg-slate-900">Achieved</th>
+                      <th className="py-3 px-3 text-center min-w-[90px] bg-slate-900">Efficiency</th>
+                      <th className="py-3 px-3 text-center min-w-[100px] bg-slate-900">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
                     {filteredLines.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="py-12 text-center text-slate-400">
-                          No production lines match the selected filters for {selectedDate}.
+                        <td colSpan={12} className="py-16 text-center text-slate-400 bg-slate-50/50">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Layers className="h-8 w-8 text-slate-300" />
+                            <p className="text-sm font-semibold">No production lines match the selected filters for {selectedDate}.</p>
+                            <p className="text-xs text-slate-400">Try changing unit, buyer, or status filters above.</p>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -648,93 +660,102 @@ export function DateDetailsView({ initialDate = "2026-10-01", onBack, onSelectLi
                         const ach = line.achievementRate;
                         const isHigh = ach >= 100;
                         const isGood = ach >= 80 && ach < 100;
+                        const isZero = line.actual === 0;
 
                         return (
                           <tr
                             key={`${line.unitCode}-${line.lineName}-${idx}`}
                             onClick={() => onSelectLine?.(line.lineName)}
-                            className="hover:bg-indigo-50/40 transition-colors cursor-pointer group"
+                            className={`group transition-colors cursor-pointer border-b border-slate-100 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30 ${
+                              idx % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/50"
+                            }`}
                           >
                             {/* Unit */}
-                            <td className="py-2.5 px-3 font-semibold text-slate-600">
-                              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono">
+                            <td className="py-3 px-3 text-center border-r border-slate-100 dark:border-slate-800/80">
+                              <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-mono font-bold">
                                 {line.unitCode}
                               </span>
                             </td>
 
                             {/* Line Name */}
-                            <td className="py-2.5 px-3 font-bold text-slate-900 group-hover:text-indigo-600 flex items-center gap-1">
-                              <span>{line.lineName}</span>
-                              <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500" />
+                            <td className="py-3 px-4 border-r border-slate-100 dark:border-slate-800/80">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 text-xs">
+                                  {line.lineName}
+                                </span>
+                                <ArrowUpRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500 shrink-0" />
+                              </div>
                             </td>
 
                             {/* Buyer & Style */}
-                            <td className="py-2.5 px-3">
-                              <div className="font-semibold text-slate-800 text-[11px] truncate max-w-[140px]">
+                            <td className="py-3 px-4 border-r border-slate-100 dark:border-slate-800/80">
+                              <div className="font-bold text-slate-900 dark:text-slate-100 text-[11px] truncate max-w-[170px]" title={line.styleRef}>
                                 {line.styleRef || "—"}
                               </div>
-                              <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[170px] mt-0.5" title={line.buyerName}>
                                 {line.buyerName || "—"}
                               </div>
                             </td>
 
                             {/* OC / PO */}
-                            <td className="py-2.5 px-3 font-mono text-[10px] text-slate-500 truncate max-w-[100px]">
-                              {line.oc || "—"}
+                            <td className="py-3 px-3 text-center border-r border-slate-100 dark:border-slate-800/80">
+                              <span className="font-mono text-[10px] text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 truncate max-w-[90px] inline-block" title={line.oc}>
+                                {line.oc || "—"}
+                              </span>
                             </td>
 
                             {/* SMV */}
-                            <td className="py-2.5 px-3 text-center font-mono text-slate-600">
+                            <td className="py-3 px-3 text-center font-mono text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800/80">
                               {line.smv ? Number(line.smv).toFixed(2) : "—"}
                             </td>
 
                             {/* Manpower */}
-                            <td className="py-2.5 px-3 text-center font-mono text-slate-600">
+                            <td className="py-3 px-3 text-center font-mono text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800/80">
                               {line.manpower || 25}
                             </td>
 
                             {/* Plan Target */}
-                            <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-700">
-                              {line.target.toLocaleString()}
+                            <td className="py-3 px-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-900/30">
+                              {line.target ? line.target.toLocaleString() : "—"}
                             </td>
 
                             {/* Actual Output */}
-                            <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                            <td className="py-3 px-4 text-right font-mono font-bold border-r border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-900/30">
                               {line.actual > 0 ? (
-                                <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold">
                                   {line.actual.toLocaleString()}
                                 </span>
                               ) : (
-                                <span className="text-slate-400">0</span>
+                                <span className="text-slate-400 dark:text-slate-600 font-medium">0</span>
                               )}
                             </td>
 
                             {/* Variance Gap */}
-                            <td className="py-2.5 px-3 text-right font-mono font-semibold">
+                            <td className="py-3 px-3 text-right font-mono font-bold border-r border-slate-100 dark:border-slate-800/80">
                               {line.target === 0 && line.actual === 0 ? (
                                 <span className="text-slate-400">—</span>
                               ) : isSurplus ? (
-                                <span className="text-emerald-600 text-[11px]">
+                                <span className="text-emerald-600 dark:text-emerald-400 text-[11px] bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
                                   +{Math.abs(line.gap).toLocaleString()}
                                 </span>
                               ) : (
-                                <span className="text-rose-600 text-[11px]">
+                                <span className="text-rose-600 dark:text-rose-400 text-[11px] bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">
                                   -{line.gap.toLocaleString()}
                                 </span>
                               )}
                             </td>
 
                             {/* Achieved % */}
-                            <td className="py-2.5 px-3 text-center">
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span className={`font-mono font-bold text-[11px] ${
-                                  isHigh ? "text-emerald-700" : isGood ? "text-indigo-700" : "text-amber-700"
+                            <td className="py-3 px-3 text-center border-r border-slate-100 dark:border-slate-800/80">
+                              <div className="flex flex-col items-center gap-1">
+                                <span className={`font-mono font-bold text-xs ${
+                                  isHigh ? "text-emerald-700 dark:text-emerald-400" : isGood ? "text-indigo-700 dark:text-indigo-400" : "text-amber-700 dark:text-amber-400"
                                 }`}>
                                   {ach}%
                                 </span>
-                                <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="w-14 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                   <div
-                                    className={`h-full rounded-full ${
+                                    className={`h-full rounded-full transition-all duration-300 ${
                                       isHigh ? "bg-emerald-500" : isGood ? "bg-indigo-500" : "bg-amber-500"
                                     }`}
                                     style={{ width: `${Math.min(100, ach)}%` }}
@@ -744,37 +765,37 @@ export function DateDetailsView({ initialDate = "2026-10-01", onBack, onSelectLi
                             </td>
 
                             {/* Efficiency % */}
-                            <td className="py-2.5 px-3 text-center">
-                              <span className={`px-1.5 py-0.5 rounded font-mono font-bold text-[10px] ${
+                            <td className="py-3 px-3 text-center border-r border-slate-100 dark:border-slate-800/80">
+                              <span className={`px-2 py-0.5 rounded-md font-mono font-bold text-[11px] border ${
                                 line.efficiency >= 70
-                                  ? "bg-emerald-100 text-emerald-800"
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800"
                                   : line.efficiency >= 55
-                                  ? "bg-sky-100 text-sky-800"
+                                  ? "bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800"
                                   : line.efficiency > 0
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-slate-100 text-slate-500"
+                                  ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800"
+                                  : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
                               }`}>
                                 {line.efficiency > 0 ? `${line.efficiency}%` : "—"}
                               </span>
                             </td>
 
                             {/* Status Badge */}
-                            <td className="py-2.5 px-3 text-center">
+                            <td className="py-3 px-3 text-center">
                               {isHigh ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-full">
                                   <CheckCircle2 className="h-3 w-3" />
                                   Exceeded
                                 </span>
                               ) : isGood ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded-full">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 px-2 py-0.5 rounded-full">
                                   On Track
                                 </span>
-                              ) : line.actual === 0 ? (
-                                <span className="text-[10px] font-medium text-slate-400">
+                              ) : isZero ? (
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                                   No Run
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800 px-2 py-0.5 rounded-full">
                                   <AlertTriangle className="h-3 w-3" />
                                   Low Output
                                 </span>
